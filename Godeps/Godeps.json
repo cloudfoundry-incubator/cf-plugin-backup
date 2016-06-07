@@ -1,0 +1,196 @@
+{
+	"ImportPath": "github.com/hpcloud/cf-plugin-backup",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v62",
+	"Deps": [
+		{
+			"ImportPath": "github.com/BurntSushi/toml",
+			"Comment": "v0.2.0-9-gf0aeabc",
+			"Rev": "f0aeabca5a127c4078abb8c8d64298b147264b55"
+		},
+		{
+			"ImportPath": "github.com/blang/semver",
+			"Comment": "v3.1.0",
+			"Rev": "aea32c919a18e5ef4537bbd283ff29594b1b0165"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/configuration",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/configuration/coreconfig",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/formatters",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/i18n",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/models",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/resources",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/terminal",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/cf/trace",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/plugin",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/cli/plugin/models",
+			"Comment": "v6.18.1-78-g52d75a4",
+			"Rev": "52d75a40667bd6050237392ea72181176ac60acc"
+		},
+		{
+			"ImportPath": "github.com/cloudfoundry/gofileutils/fileutils",
+			"Rev": "788944944894988fe374b311a216f6387efd6ae0"
+		},
+		{
+			"ImportPath": "github.com/fatih/color",
+			"Comment": "v0.1-17-g533cd7f",
+			"Rev": "533cd7fd8a85905f67a1753afb4deddc85ea174f"
+		},
+		{
+			"ImportPath": "github.com/fsnotify/fsnotify",
+			"Comment": "v1.3.0",
+			"Rev": "30411dbcefb7a1da7e84f75530ad3abe4011b4f8"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/hcl/ast",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/hcl/parser",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/hcl/scanner",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/hcl/strconv",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/hcl/token",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/json/parser",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/json/scanner",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/hcl/json/token",
+			"Rev": "197e8d3cf42199cfd53cd775deb37f3637234635"
+		},
+		{
+			"ImportPath": "github.com/inconshreveable/mousetrap",
+			"Rev": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+		},
+		{
+			"ImportPath": "github.com/magiconair/properties",
+			"Comment": "v1.7.0",
+			"Rev": "c265cfa48dda6474e208715ca93e987829f572f8"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-colorable",
+			"Comment": "v0.0.5",
+			"Rev": "9056b7a9f2d1f2d96498d6d146acd1f9d5ed3d59"
+		},
+		{
+			"ImportPath": "github.com/mattn/go-isatty",
+			"Rev": "56b76bdf51f7708750eac80fa38b952bb9f32639"
+		},
+		{
+			"ImportPath": "github.com/mitchellh/mapstructure",
+			"Rev": "281073eb9eb092240d33ef253c404f1cca550309"
+		},
+		{
+			"ImportPath": "github.com/nicksnyder/go-i18n/i18n",
+			"Comment": "v1.4.0",
+			"Rev": "37e5c2de3e03e4b82693e3fcb4a6aa2cc4eb07e3"
+		},
+		{
+			"ImportPath": "github.com/nicksnyder/go-i18n/i18n/bundle",
+			"Comment": "v1.4.0",
+			"Rev": "37e5c2de3e03e4b82693e3fcb4a6aa2cc4eb07e3"
+		},
+		{
+			"ImportPath": "github.com/nicksnyder/go-i18n/i18n/language",
+			"Comment": "v1.4.0",
+			"Rev": "37e5c2de3e03e4b82693e3fcb4a6aa2cc4eb07e3"
+		},
+		{
+			"ImportPath": "github.com/nicksnyder/go-i18n/i18n/translation",
+			"Comment": "v1.4.0",
+			"Rev": "37e5c2de3e03e4b82693e3fcb4a6aa2cc4eb07e3"
+		},
+		{
+			"ImportPath": "github.com/spf13/cast",
+			"Rev": "27b586b42e29bec072fe7379259cc719e1289da6"
+		},
+		{
+			"ImportPath": "github.com/spf13/cobra",
+			"Rev": "1238ba19d24b0b9ceee2094e1cb31947d45c3e86"
+		},
+		{
+			"ImportPath": "github.com/spf13/jwalterweatherman",
+			"Rev": "33c24e77fb80341fe7130ee7c594256ff08ccc46"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "cb88ea77998c3f024757528e3305022ab50b43be"
+		},
+		{
+			"ImportPath": "github.com/spf13/viper",
+			"Rev": "c1ccc378a054ea8d4e38d8c67f6938d4760b53dd"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"Rev": "575fdbe86e5dd89229707ebec0575ce7d088a4a6"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "18d75a3b5eff412f11fd83929c150256977e68aa"
+		},
+		{
+			"ImportPath": "gopkg.in/yaml.v2",
+			"Rev": "f7716cbe52baa25d2e9b0d0da546fcf909fc16b4"
+		}
+	]
+}
