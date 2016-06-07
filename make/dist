@@ -1,0 +1,14 @@
+#!/bin/sh
+
+OSES="linux darwin windows"
+
+set -o errexit
+
+. make/include/colors.sh
+. make/include/versioning.sh
+
+
+echo "${OK_COLOR}==> Disting all${NO_COLOR}"; \
+for OS in ${OSES}; do \
+	cd build/${OS}-amd64/ 1> /dev/null; tar czf ../../cf-plugin-backup-${APP_VERSION}-${OS}-amd64.tgz ./; cd - 1> /dev/null; \
+done; 

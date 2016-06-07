@@ -1,0 +1,23 @@
+#!/bin/sh
+
+set -o errexit
+
+. make/include/colors.sh
+
+echo "${OK_COLOR}==> Formating ${ERROR_COLOR}"
+ISSUES=$(mktemp)
+
+trap "rm -f ${ISSUES}" HUP INT TERM
+
+go list -f '{{ .Dir }}' ./... | grep -v /vendor/ | while read DIR; do
+    goimports -d -e ${DIR}/*.go | tee -a ${ISSUES}
+done
+
+ISSUE_COUNT=$(cat ${ISSUES} | wc -l)
+
+rm -f ${ISSUES}
+
+echo "${NO_COLOR}\c"
+
+test ${ISSUE_COUNT} -eq 0
+

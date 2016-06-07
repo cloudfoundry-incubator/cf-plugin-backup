@@ -1,0 +1,5 @@
+set -o errexit -o nounset
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+
+rm -rf ${GIT_ROOT}/build

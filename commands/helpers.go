@@ -38,6 +38,7 @@ func getFileSha(filePath string) (string, error) {
 	return base64.StdEncoding.EncodeToString(sha1.Sum(nil)), nil
 }
 
+//ShowFailed prints a failed message
 func ShowFailed(message string) {
 	traceEnv := os.Getenv("CF_TRACE")
 	traceLogger := trace.NewLogger(Writer, false, traceEnv, "")
@@ -46,6 +47,7 @@ func ShowFailed(message string) {
 	ui.Failed(fmt.Sprintf("%s\n", message))
 }
 
+//ShowOK prints a regular messages
 func ShowOK(message string) {
 	traceEnv := os.Getenv("CF_TRACE")
 	traceLogger := trace.NewLogger(Writer, false, traceEnv, "")
@@ -55,6 +57,7 @@ func ShowOK(message string) {
 	fmt.Printf("%s\n", message)
 }
 
+//Confirm displays a configuration message
 func Confirm(message string) bool {
 	traceEnv := os.Getenv("CF_TRACE")
 	traceLogger := trace.NewLogger(Writer, false, traceEnv, "")

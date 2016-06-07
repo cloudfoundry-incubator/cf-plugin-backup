@@ -1,0 +1,23 @@
+#!/bin/sh
+
+OSES="linux darwin"
+
+set -o errexit
+
+. make/include/colors.sh
+. make/include/versioning.sh
+
+echo "${OK_COLOR}==> Building ${ERROR_COLOR}"
+
+for OS in ${OSES}; do \
+		 env GOOS=${OS} GOARCH=amd64 go build -o build/${OS}-amd64/cf-plugin-backup \
+		 -ldflags="-X main.version=${APP_VERSION}" \
+		 ./  
+done
+
+#windows is special
+env GOOS=windows GOARCH=amd64 go build -o build/windows-amd64/cf-plugin-backup.exe \
+-ldflags="-X main.version=${APP_VERSION}" \
+./
+
+echo "${NO_COLOR}\c"
