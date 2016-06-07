@@ -8,11 +8,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile string
 
-var configJson string
-var target string
-var key string
+	configJSON string
+	target     string
+	key        string
+)
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{

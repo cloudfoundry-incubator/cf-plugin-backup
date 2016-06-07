@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -o errexit
+
+. make/include/colors.sh
+
+echo "${OK_COLOR}==> Vetting${ERROR_COLOR}"
+
+go vet $(go list -f '{{ .ImportPath }}' ./... | sed '/fissile[/]scripts/d ; /\/vendor\//d')
+
+echo "${NO_COLOR}\c"

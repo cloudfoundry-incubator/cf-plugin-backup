@@ -14,6 +14,7 @@ import (
 
 var target string
 
+//BackupPlugin represents the struct of the cf cli plugin
 type BackupPlugin struct {
 	argLength int
 	ui        terminal.UI
