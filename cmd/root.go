@@ -6,6 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/cloudfoundry/cli/plugin"
 )
 
 var (
@@ -14,6 +16,9 @@ var (
 	configJSON string
 	target     string
 	key        string
+
+	CliConnection     plugin.CliConnection
+	BackupDestination string
 )
 
 // RootCmd represents the base command when called without any subcommands

@@ -1,10 +1,37 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 
+	"github.com/cloudfoundry/cli/plugin"
 	"github.com/spf13/cobra"
+
+	"github.com/hpcloud/cf-plugin-backup/models"
+	"github.com/hpcloud/cf-plugin-backup/util"
 )
+
+func GetAllOrganizations(cliConnection plugin.CliConnection) string {
+	resources := util.GetResources(cliConnection, "/v2/organizations", 1, nil, nil)
+	jsonResources, err := json.MarshalIndent(resources, "", " ")
+	util.FreakOut(err)
+	return string(jsonResources)
+}
+
+func GetAllSpaces(cliConnection plugin.CliConnection) string {
+	resources := util.GetResources(cliConnection, "/v2/spaces", 1, nil, nil)
+	jsonResources, err := json.MarshalIndent(resources, "", " ")
+	util.FreakOut(err)
+	return string(jsonResources)
+}
+
+func GetAllApps(cliConnection plugin.CliConnection) string {
+	resources := util.GetResources(cliConnection, "/v2/apps", 1, nil, nil)
+	jsonResources, err := json.MarshalIndent(resources, "", " ")
+	util.FreakOut(err)
+	return string(jsonResources)
+}
 
 // snapshotCmd represents the snapshot command
 var snapshotCmd = &cobra.Command{
@@ -13,8 +40,16 @@ var snapshotCmd = &cobra.Command{
 	Long: `Creates a new CloudFoundry backup snapshot to a local file.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
-		fmt.Println("snapshot called")
+		backupResources, err := util.GetOrgsResources(CliConnection)
+		util.FreakOut(err)
+
+		backupJson, err := util.CreateBackupJson(models.BackupModel{Organizations: backupResources})
+		util.FreakOut(err)
+
+		fmt.Println(backupJson)
+
+		err = ioutil.WriteFile("cf-backup.json", []byte(backupJson), 0644)
+		util.FreakOut(err)
 	},
 }
 
