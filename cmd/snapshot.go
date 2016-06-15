@@ -32,8 +32,6 @@ var snapshotCmd = &cobra.Command{
 		backupJson, err := util.CreateBackupJSON(models.BackupModel{Organizations: backupResources})
 		util.FreakOut(err)
 
-		fmt.Println(backupJson)
-
 		err = ioutil.WriteFile(BackupFile, []byte(backupJson), 0644)
 		util.FreakOut(err)
 	},
