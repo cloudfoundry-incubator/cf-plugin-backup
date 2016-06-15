@@ -29,7 +29,7 @@ var snapshotCmd = &cobra.Command{
 		backupResources, err := util.GetOrgsResourcesRecurively(CliConnection)
 		util.FreakOut(err)
 
-		backupJson, err := util.CreateBackupJson(models.BackupModel{Organizations: backupResources})
+		backupJson, err := util.CreateBackupJSON(models.BackupModel{Organizations: backupResources})
 		util.FreakOut(err)
 
 		fmt.Println(backupJson)

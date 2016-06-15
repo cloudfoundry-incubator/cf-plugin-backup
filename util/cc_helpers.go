@@ -15,12 +15,12 @@ type FollowDecision func(childKey string) bool
 
 func FollowRelation(cliConnection plugin.CliConnection, resource *models.ResourceModel, relationsDepth int, follow FollowDecision, cache map[string]interface{}) {
 	if relationsDepth > 0 {
-		for k, childUrl := range resource.Entity {
+		for k, childURL := range resource.Entity {
 			if strings.HasSuffix(k, models.UrlSuffix) {
 				childKey := strings.TrimSuffix(k, models.UrlSuffix)
 				if _, ok := resource.Entity[childKey]; !ok {
 					if follow == nil || follow(childKey) {
-						childResource := GetGenericResource(cliConnection, childUrl.(string), relationsDepth-1, follow, cache)
+						childResource := GetGenericResource(cliConnection, childURL.(string), relationsDepth-1, follow, cache)
 						resource.Entity[childKey] = childResource
 					}
 				}
@@ -40,9 +40,9 @@ func GetGenericResource(cliConnection plugin.CliConnection, url string, relation
 
 	if _, ok := result["total_results"]; ok {
 		return GetResources(cliConnection, url, relationsDepth, follow, cache)
-	} else {
-		return GetResource(cliConnection, url, relationsDepth, follow, cache)
 	}
+
+	return GetResource(cliConnection, url, relationsDepth, follow, cache)
 }
 
 func GetResource(cliConnection plugin.CliConnection, url string, relationsDepth int, follow FollowDecision, cache map[string]interface{}) *models.ResourceModel {
@@ -188,14 +188,14 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]interface{}) {
 	for k, v := range resource.Entity {
 		if strings.HasSuffix(k, models.UrlSuffix) {
-			childUrl := v.(string)
+			childURL := v.(string)
 			childKey := strings.TrimSuffix(k, models.UrlSuffix)
-			if cacheEntry, hit := cache[childUrl]; hit {
+			if cacheEntry, hit := cache[childURL]; hit {
 				resource.Entity[childKey] = cacheEntry
 			} else {
 				if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
 					childResource := TransformToResourceGeneric(childEntity, cache)
-					cache[childUrl] = childResource
+					cache[childURL] = childResource
 					resource.Entity[childKey] = childResource
 				}
 			}
@@ -279,7 +279,7 @@ func GetOrgsResourcesRecurively(cliConnection plugin.CliConnection) (interface{}
 	return resources, nil
 }
 
-func CreateBackupJson(backupModel models.BackupModel) (string, error) {
+func CreateBackupJSON(backupModel models.BackupModel) (string, error) {
 	jsonResources, err := json.MarshalIndent(backupModel, "", " ")
 	if err != nil {
 		return "", err
