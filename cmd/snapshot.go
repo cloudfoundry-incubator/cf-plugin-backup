@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 
 	"github.com/cloudfoundry/cli/plugin"
 	"github.com/spf13/cobra"
@@ -34,6 +35,32 @@ var snapshotCmd = &cobra.Command{
 
 		err = ioutil.WriteFile(BackupFile, []byte(backupJson), 0644)
 		util.FreakOut(err)
+
+		// Save app bits
+
+		downloader := &util.CFDownloader{
+			Cli:    CliConnection,
+			Writer: new(util.CFFileWriter),
+		}
+		appBits := util.NewCFDroplet(CliConnection, downloader)
+
+		backupModel := models.BackupModel{}
+		err = json.Unmarshal([]byte(backupJson), &backupModel)
+		util.FreakOut(err)
+
+		resources := util.TransformToResources(backupModel.Organizations, make(map[string]interface{}))
+		for _, org := range *resources {
+			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
+				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
+					appGuid := app.Metadata["guid"].(string)
+					fmt.Println("Saving bits its for application", app.Entity["name"], appGuid)
+
+					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
+					err := appBits.SaveDroplet(appGuid, appZipPath)
+					util.FreakOut(err)
+				}
+			}
+		}
 	},
 }
 

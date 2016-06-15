@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -33,6 +35,18 @@ It includes a summary of organizations, spaces and apps
 				fmt.Println("--", "Space ", space.Entity["name"])
 				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
 					fmt.Println("---", "App ", app.Entity["name"])
+
+					appGuid := app.Metadata["guid"].(string)
+					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
+					appZip, err := os.Open(appZipPath)
+					if err == nil {
+						zipStat, err := appZip.Stat()
+						if err == nil {
+							fmt.Println("----", "Packge Size", zipStat.Size(), "Bytes")
+						}
+						appZip.Close()
+					}
+
 				}
 			}
 		}
