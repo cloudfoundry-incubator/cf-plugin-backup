@@ -11,7 +11,7 @@ type ResourceCollectionModel struct {
 }
 
 type ResourceModel struct {
-	Metadata MetadataModel          `json:"metadata"`
+	Metadata map[string]interface{} `json:"metadata"`
 	Entity   map[string]interface{} `json:"entity"`
 }
 

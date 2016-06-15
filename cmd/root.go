@@ -17,6 +17,8 @@ var (
 	target     string
 	key        string
 
+	BackupFile string
+
 	CliConnection     plugin.CliConnection
 	BackupDestination string
 )
@@ -61,4 +63,6 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+
+	BackupFile = "cf-backup.json"
 }

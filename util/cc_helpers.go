@@ -58,7 +58,7 @@ func GetResource(cliConnection plugin.CliConnection, url string, relationsDepth 
 	err = json.Unmarshal([]byte(output[0]), &resource)
 	FreakOut(err)
 
-	cache[resource.Metadata.Url] = resource
+	cache[resource.Metadata["url"].(string)] = resource
 
 	FollowRelation(cliConnection, resource, relationsDepth, follow, cache)
 
@@ -83,10 +83,10 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 		FreakOut(err)
 
 		for _, resource := range *collectionModel.Resources {
-			if cacheEntry, hit := cache[resource.Metadata.Url]; hit {
+			if cacheEntry, hit := cache[resource.Metadata["url"].(string)]; hit {
 				resource = cacheEntry.(*models.ResourceModel)
 			} else {
-				cache[resource.Metadata.Url] = resource
+				cache[resource.Metadata["url"].(string)] = resource
 			}
 
 			allResources = append(allResources, resource)
@@ -185,7 +185,62 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 	return &result
 }
 
-func GetOrgsResources(cliConnection plugin.CliConnection) (interface{}, error) {
+func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]interface{}) {
+	for k, v := range resource.Entity {
+		if strings.HasSuffix(k, models.UrlSuffix) {
+			childUrl := v.(string)
+			childKey := strings.TrimSuffix(k, models.UrlSuffix)
+			if cacheEntry, hit := cache[childUrl]; hit {
+				resource.Entity[childKey] = cacheEntry
+			} else {
+				if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
+					childResource := TransformToResourceGeneric(childEntity, cache)
+					cache[childUrl] = childResource
+					resource.Entity[childKey] = childResource
+				}
+			}
+		}
+	}
+}
+
+func TransformToResourceGeneric(r interface{}, cache map[string]interface{}) interface{} {
+	switch r.(type) {
+	case map[string]interface{}:
+		return TransformToResource(r, cache)
+	case []interface{}:
+		return TransformToResources(r, cache)
+	}
+
+	panic("unknown resource type")
+}
+
+func TransformToResource(resource interface{}, cache map[string]interface{}) *models.ResourceModel {
+	resourceModel := models.ResourceModel{}
+
+	resourceEntitcache := resource.(map[string]interface{})
+
+	resourceModel.Entity = resourceEntitcache["entity"].(map[string]interface{})
+	resourceModel.Metadata = resourceEntitcache["metadata"].(map[string]interface{})
+
+	RecreateLinkForEntity(&resourceModel, cache)
+
+	return &resourceModel
+}
+
+func TransformToResources(resources interface{}, cache map[string]interface{}) *[]*models.ResourceModel {
+	var result []*models.ResourceModel
+
+	resourceArray := resources.([]interface{})
+
+	for _, r := range resourceArray {
+		resourceModel := TransformToResource(r, cache)
+		result = append(result, resourceModel)
+	}
+
+	return &result
+}
+
+func GetOrgsResourcesRecurively(cliConnection plugin.CliConnection) (interface{}, error) {
 	resourceUrlsWhitelistSlice := []interface{}{
 		"organizations",
 		"auditors", "managers", "billing_managers",

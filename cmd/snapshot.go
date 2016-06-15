@@ -19,28 +19,14 @@ func GetAllOrganizations(cliConnection plugin.CliConnection) string {
 	return string(jsonResources)
 }
 
-func GetAllSpaces(cliConnection plugin.CliConnection) string {
-	resources := util.GetResources(cliConnection, "/v2/spaces", 1, nil, nil)
-	jsonResources, err := json.MarshalIndent(resources, "", " ")
-	util.FreakOut(err)
-	return string(jsonResources)
-}
-
-func GetAllApps(cliConnection plugin.CliConnection) string {
-	resources := util.GetResources(cliConnection, "/v2/apps", 1, nil, nil)
-	jsonResources, err := json.MarshalIndent(resources, "", " ")
-	util.FreakOut(err)
-	return string(jsonResources)
-}
-
 // snapshotCmd represents the snapshot command
 var snapshotCmd = &cobra.Command{
 	Use:   "snapshot",
-	Short: "Creates a new CloudFoundry backup snapshot",
-	Long: `Creates a new CloudFoundry backup snapshot to a local file.
+	Short: "Create a new CloudFoundry backup snapshot",
+	Long: `Create a new CloudFoundry backup snapshot to a local file.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		backupResources, err := util.GetOrgsResources(CliConnection)
+		backupResources, err := util.GetOrgsResourcesRecurively(CliConnection)
 		util.FreakOut(err)
 
 		backupJson, err := util.CreateBackupJson(models.BackupModel{Organizations: backupResources})
@@ -48,7 +34,7 @@ var snapshotCmd = &cobra.Command{
 
 		fmt.Println(backupJson)
 
-		err = ioutil.WriteFile("cf-backup.json", []byte(backupJson), 0644)
+		err = ioutil.WriteFile(BackupFile, []byte(backupJson), 0644)
 		util.FreakOut(err)
 	},
 }
