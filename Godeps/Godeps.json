@@ -15,62 +15,67 @@
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/configuration",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/configuration/coreconfig",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/formatters",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/i18n",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/models",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/resources",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/terminal",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf/trace",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/plugin",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/plugin/models",
-			"Comment": "v6.19.0-25-g2d5a416",
-			"Rev": "2d5a416bd21be9d0c31ef05c409d0c291f7e00bf"
+			"Comment": "v6.19.0-48-gc0ca16b",
+			"Rev": "c0ca16b54891ae6b04d96bb8564375e090d81d8c"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/gofileutils/fileutils",
 			"Rev": "94cb17960d629e2ca9a67d381228ec499966a69b"
+		},
+		{
+			"ImportPath": "github.com/deckarep/golang-set",
+			"Comment": "v1.5-4-g1f0f4ff",
+			"Rev": "1f0f4ff8d3fbef9328522993ce71c35890f67554"
 		},
 		{
 			"ImportPath": "github.com/fatih/color",
