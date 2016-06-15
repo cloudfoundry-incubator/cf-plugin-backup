@@ -287,19 +287,3 @@ func CreateBackupJSON(backupModel models.BackupModel) (string, error) {
 
 	return string(jsonResources), nil
 }
-
-//func MapUrlResource(resource *models.ResourceModel, urlMappedResources map[string]*models.ResourceModel) {
-//	urlMappedResources[resource.Metadata.Url] = resource
-
-//}
-
-//func MapUrlResources(resources []*models.ResourceModel, urlMappedResources map[string]*models.ResourceModel) {
-//	for _, v := range resources {
-//		MapUrlResource(v, urlMappedResources)
-//	}
-//}
-
-//func RecreateResourceLinks(resources []*models.ResourceModel) {
-//	urlMappedResources := make(map[string]*models.ResourceModel)
-//	MapUrlResources(resources, urlMappedResources)
-//}
