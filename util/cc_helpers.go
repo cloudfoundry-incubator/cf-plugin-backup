@@ -287,3 +287,13 @@ func CreateBackupJSON(backupModel models.BackupModel) (string, error) {
 
 	return string(jsonResources), nil
 }
+
+func ReadBackupJSON(jsonBytes []byte) (*models.BackupModel, error) {
+	backupModel := models.BackupModel{}
+	err := json.Unmarshal([]byte(jsonBytes), &backupModel)
+	if err != nil {
+		return nil, err
+	}
+
+	return &backupModel, nil
+}
