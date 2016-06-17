@@ -24,4 +24,5 @@ type MetadataModel struct {
 
 type BackupModel struct {
 	Organizations interface{} `json:"organizations"`
+	SharedDomains interface{} `json:"shared_domains"`
 }

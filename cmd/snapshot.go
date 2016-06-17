@@ -30,7 +30,13 @@ var snapshotCmd = &cobra.Command{
 		backupResources, err := util.GetOrgsResourcesRecurively(CliConnection)
 		util.FreakOut(err)
 
-		backupJson, err := util.CreateBackupJSON(models.BackupModel{Organizations: backupResources})
+		sharedDomains, err := util.GetSharedDomains(CliConnection)
+		util.FreakOut(err)
+
+		backupJson, err := util.CreateBackupJSON(models.BackupModel{
+			Organizations: backupResources,
+			SharedDomains: sharedDomains,
+		})
 		util.FreakOut(err)
 
 		err = ioutil.WriteFile(BackupFile, []byte(backupJson), 0644)

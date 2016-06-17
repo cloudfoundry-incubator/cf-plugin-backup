@@ -279,6 +279,19 @@ func GetOrgsResourcesRecurively(cliConnection plugin.CliConnection) (interface{}
 	return resources, nil
 }
 
+func GetSharedDomains(cliConnection plugin.CliConnection) (interface{}, error) {
+
+	follow := func(childKey string) bool {
+		return false
+	}
+
+	cache := make(map[string]interface{})
+	resources := GetResources(cliConnection, "/v2/shared_domains", 1, follow, cache)
+	resources = BreakResourceLoops(resources)
+
+	return resources, nil
+}
+
 func CreateBackupJSON(backupModel models.BackupModel) (string, error) {
 	jsonResources, err := json.MarshalIndent(backupModel, "", " ")
 	if err != nil {
