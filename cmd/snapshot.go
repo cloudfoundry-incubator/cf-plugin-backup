@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/cloudfoundry/cli/plugin"
@@ -48,12 +49,17 @@ var snapshotCmd = &cobra.Command{
 		err = json.Unmarshal([]byte(backupJson), &backupModel)
 		util.FreakOut(err)
 
+		err = os.Mkdir(filepath.Join(BackupDir, BackupAppBitsDir), 0755)
+		if err != nil && !os.IsExist(err) {
+			util.FreakOut(err)
+		}
+
 		resources := util.TransformToResources(backupModel.Organizations, make(map[string]interface{}))
 		for _, org := range *resources {
 			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
 				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
 					appGuid := app.Metadata["guid"].(string)
-					fmt.Println("Saving bits its for application", app.Entity["name"], appGuid)
+					fmt.Println("Saving bits for application", app.Entity["name"], appGuid)
 
 					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
 					err := appBits.SaveDroplet(appGuid, appZipPath)
