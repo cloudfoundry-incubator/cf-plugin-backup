@@ -16,9 +16,10 @@ var target string
 
 //BackupPlugin represents the struct of the cf cli plugin
 type BackupPlugin struct {
-	argLength int
-	ui        terminal.UI
-	token     string
+	cliConnection plugin.CliConnection
+	argLength     int
+	ui            terminal.UI
+	token         string
 }
 
 func main() {
@@ -27,6 +28,7 @@ func main() {
 
 //Run method called before each command
 func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
+	c.cliConnection = cliConnection
 	c.argLength = len(args)
 
 	traceEnv := os.Getenv("CF_TRACE")
@@ -47,6 +49,8 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 		return
 	}
 
+	cmd.CliConnection = cliConnection
+
 	cmd.RootCmd.SetArgs(args[1:])
 	cmd.Execute()
 }
@@ -54,7 +58,7 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 //GetMetadata returns metadata for cf cli
 func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 	return plugin.PluginMetadata{
-		Name: "cf-backup-plugin",
+		Name: "Backup",
 		Version: plugin.VersionType{
 			Major: 1,
 			Minor: 0,
@@ -85,6 +89,13 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 				HelpText: "Restore a backup",
 				UsageDetails: plugin.Usage{
 					Usage: "cf backup restore",
+				},
+			},
+			plugin.Command{
+				Name:     "backup info",
+				HelpText: "Show backup summary",
+				UsageDetails: plugin.Usage{
+					Usage: "cf backup info",
 				},
 			},
 		},

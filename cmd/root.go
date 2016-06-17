@@ -6,6 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/cloudfoundry/cli/plugin"
 )
 
 var (
@@ -14,6 +16,13 @@ var (
 	configJSON string
 	target     string
 	key        string
+
+	BackupDir        string
+	BackupAppBitsDir string
+	BackupFile       string
+
+	CliConnection     plugin.CliConnection
+	BackupDestination string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -56,4 +65,8 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
+
+	BackupDir = "./"
+	BackupAppBitsDir = "app-bits"
+	BackupFile = "cf-backup.json"
 }

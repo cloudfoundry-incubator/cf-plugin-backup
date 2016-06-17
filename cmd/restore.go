@@ -9,12 +9,11 @@ import (
 // restoreCmd represents the restore command
 var restoreCmd = &cobra.Command{
 	Use:   "restore",
-	Short: "Restores the CloudFoundry state from a backup",
-	Long: `Restores the CloudFoundry state from a backup created with the snapshot command
+	Short: "Restore the CloudFoundry state from a backup",
+	Long: `Restore the CloudFoundry state from a backup created with the snapshot command
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		// TODO: Work your own magic here
-		fmt.Println("restore called")
+		fmt.Println("restore called. not implemented")
 	},
 }
 
