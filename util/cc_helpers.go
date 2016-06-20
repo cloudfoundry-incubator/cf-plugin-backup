@@ -3,6 +3,7 @@ package util
 import (
 	"container/list"
 	"encoding/json"
+	"log"
 	"strings"
 
 	"github.com/deckarep/golang-set" // MIT License
@@ -30,6 +31,10 @@ func FollowRelation(cliConnection plugin.CliConnection, resource *models.Resourc
 }
 
 func GetGenericResource(cliConnection plugin.CliConnection, url string, relationsDepth int, follow FollowDecision, cache map[string]interface{}) interface{} {
+	if cacheEntry, hit := cache[url]; hit {
+		return cacheEntry
+	}
+
 	output, err := cliConnection.CliCommandWithoutTerminalOutput("curl", url, "-X", "GET")
 	FreakOut(err)
 
@@ -49,6 +54,8 @@ func GetResource(cliConnection plugin.CliConnection, url string, relationsDepth 
 	if cacheEntry, hit := cache[url]; hit {
 		return cacheEntry.(*models.ResourceModel)
 	}
+
+	log.Println("Retrinving resource", url)
 
 	output, err := cliConnection.CliCommandWithoutTerminalOutput("curl", url, "-X", "GET")
 	FreakOut(err)
@@ -70,6 +77,8 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 		return cacheEntry.(*[]*models.ResourceModel)
 	}
 
+	log.Println("Retrinving resources from", url)
+
 	nextURL := url
 	allResources := make([]*models.ResourceModel, 0)
 
@@ -81,6 +90,8 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 
 		err = json.Unmarshal([]byte(output[0]), &collectionModel)
 		FreakOut(err)
+
+		log.Printf("Retrived %v/%v from %v", len(allResources)+len(*collectionModel.Resources), collectionModel.TotalResults, url)
 
 		for _, resource := range *collectionModel.Resources {
 			if cacheEntry, hit := cache[resource.Metadata["url"].(string)]; hit {
@@ -99,17 +110,6 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 	cache[url] = &allResources
 
 	return &allResources
-}
-
-func RemoveResourceRefs(resource *models.ResourceModel) {
-	for childKey, childValue := range resource.Entity {
-		_, isResourceModel := childValue.(*models.ResourceModel)
-		_, isArrayResourceModel := childValue.(*[]*models.ResourceModel)
-
-		if isResourceModel || isArrayResourceModel {
-			delete(resource.Entity, childKey)
-		}
-	}
 }
 
 func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceModel {
@@ -168,7 +168,7 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 							visitedResourceMap[childResource] = true
 							queue.PushBack(&childResourceCopy)
 						} else {
-							RemoveResourceRefs(&childResourceCopy)
+							childResourceCopy.Entity = nil
 						}
 
 						resource.Entity[childKey] = &multipleChildResourcesCopy
@@ -185,55 +185,95 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 	return &result
 }
 
-func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]interface{}) {
+func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]interface{}, follow FollowDecision) {
 	for k, v := range resource.Entity {
 		if strings.HasSuffix(k, models.UrlSuffix) {
-			childURL := v.(string)
+			childURL, isValidUrlEntry := v.(string)
+			if !isValidUrlEntry && childURL != "" {
+				continue
+			}
+
 			childKey := strings.TrimSuffix(k, models.UrlSuffix)
-			if cacheEntry, hit := cache[childURL]; hit {
-				resource.Entity[childKey] = cacheEntry
-			} else {
-				if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
-					childResource := TransformToResourceGeneric(childEntity, cache)
+
+			if !(follow == nil || follow(childKey)) {
+				continue
+			}
+
+			if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
+				childResource := TransformToResourceGeneric(childEntity, cache, follow)
+
+				resource.Entity[childKey] = childResource
+
+				if cacheEntry, hit := cache[childURL]; hit {
+					if resourceCacheEntry, isSingleResource := cacheEntry.(*models.ResourceModel); isSingleResource {
+						if resourceCacheEntry.Entity == nil {
+							child := childResource.(*models.ResourceModel)
+							resourceCacheEntry.Entity = child.Entity
+						}
+					}
+				} else {
 					cache[childURL] = childResource
-					resource.Entity[childKey] = childResource
+				}
+			} else {
+				if cacheEntry, hit := cache[childURL]; hit {
+					resource.Entity[childKey] = cacheEntry
 				}
 			}
 		}
 	}
 }
 
-func TransformToResourceGeneric(r interface{}, cache map[string]interface{}) interface{} {
+func TransformToResourceGeneric(r interface{}, cache map[string]interface{}, follow FollowDecision) interface{} {
 	switch r.(type) {
 	case map[string]interface{}:
-		return TransformToResource(r, cache)
+		return TransformToResource(r, cache, follow)
 	case []interface{}:
-		return TransformToResources(r, cache)
+		return TransformToResources(r, cache, follow)
 	}
 
 	panic("unknown resource type")
 }
 
-func TransformToResource(resource interface{}, cache map[string]interface{}) *models.ResourceModel {
+func TransformToResource(resource interface{}, cache map[string]interface{}, follow FollowDecision) *models.ResourceModel {
 	resourceModel := models.ResourceModel{}
 
-	resourceEntitcache := resource.(map[string]interface{})
+	resourceValue := resource.(map[string]interface{})
 
-	resourceModel.Entity = resourceEntitcache["entity"].(map[string]interface{})
-	resourceModel.Metadata = resourceEntitcache["metadata"].(map[string]interface{})
+	resourceModel.Metadata = resourceValue["metadata"].(map[string]interface{})
+	entity, hasEntity := resourceValue["entity"].(map[string]interface{})
 
-	RecreateLinkForEntity(&resourceModel, cache)
+	// Cache handling
+
+	resourceUrl := resourceModel.Metadata["url"].(string)
+	if cacheEntry, hit := cache[resourceUrl]; hit {
+		cacheEntryValue := cacheEntry.(*models.ResourceModel)
+
+		cacheEntryHasEntity := cacheEntryValue.Entity != nil
+		if hasEntity && !cacheEntryHasEntity {
+			cacheEntryValue.Entity = resourceModel.Entity
+		}
+		if !hasEntity && cacheEntryHasEntity {
+			resourceModel.Entity = cacheEntryValue.Entity
+		}
+	} else {
+		cache[resourceUrl] = &resourceModel
+	}
+
+	if hasEntity {
+		resourceModel.Entity = entity
+		RecreateLinkForEntity(&resourceModel, cache, follow)
+	}
 
 	return &resourceModel
 }
 
-func TransformToResources(resources interface{}, cache map[string]interface{}) *[]*models.ResourceModel {
+func TransformToResources(resources interface{}, cache map[string]interface{}, follow FollowDecision) *[]*models.ResourceModel {
 	var result []*models.ResourceModel
 
 	resourceArray := resources.([]interface{})
 
 	for _, r := range resourceArray {
-		resourceModel := TransformToResource(r, cache)
+		resourceModel := TransformToResource(r, cache, follow)
 		result = append(result, resourceModel)
 	}
 
@@ -274,6 +314,7 @@ func GetOrgsResourcesRecurively(cliConnection plugin.CliConnection) (interface{}
 
 	cache := make(map[string]interface{})
 	resources := GetResources(cliConnection, "/v2/organizations", 10, follow, cache)
+
 	resources = BreakResourceLoops(resources)
 
 	return resources, nil
