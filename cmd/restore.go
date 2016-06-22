@@ -6,13 +6,20 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/hpcloud/cf-plugin-backup/models"
 	"github.com/hpcloud/cf-plugin-backup/util"
+
 	"github.com/spf13/cobra"
 )
 
 type Org struct {
 	Name      string `json:"name"`
 	QuotaGUID string `json:-`
+}
+
+type Space struct {
+	Name             string `json:"name"`
+	OrganizationGuid string `json:"organization_guid"`
 }
 
 func showInfo(sMessage string) {
@@ -23,7 +30,7 @@ func showWarning(sMessage string) {
 	fmt.Printf("WARNING: %s\n", sMessage)
 }
 
-func restoreOrg(org Org) {
+func restoreOrg(org Org) string {
 	showInfo(fmt.Sprintf("Restaurating Org: %s", org.Name))
 	oJson, err := json.Marshal(org)
 	util.FreakOut(err)
@@ -35,26 +42,79 @@ func restoreOrg(org Org) {
 		showWarning(fmt.Sprintf("Could not create org %s, exception message: %s",
 			org.Name, err.Error()))
 	}
-	showOrgResult(resp, org)
+	return showOrgResult(resp, org)
 }
 
-func showOrgResult(resp []string, org Org) {
+func restoreSpace(space Space) string {
+	showInfo(fmt.Sprintf("Restaurating Space: %s", space.Name))
+	oJson, err := json.Marshal(space)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/spaces", "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create space %s, exception message: %s",
+			space.Name, err.Error()))
+	}
+	return showSpaceResult(resp, space)
+}
+
+func showSpaceResult(resp []string, space Space) string {
+	oResp := make(map[string]interface{})
+	if len(resp) == 0 {
+		showWarning(fmt.Sprintf("Got null response while restoring space %s",
+			space.Name))
+		return ""
+	}
+	err := json.Unmarshal([]byte(resp[0]), &oResp)
+	if err != nil {
+		showWarning(fmt.Sprintf("Got unknow response while restoring space %s: %s",
+			space.Name, err.Error()))
+		return ""
+	}
+	if oResp["error_code"] != nil {
+		showWarning(fmt.Sprintf("got %v-%v while restoring space %s",
+			oResp["error_code"], oResp["description"], space.Name))
+		return ""
+	}
+
+	if oResp["entity"] != nil {
+
+		resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
+
+		inName := fmt.Sprintf("%v", resource.Entity["name"])
+		if inName == space.Name {
+			showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
+		} else {
+			showWarning(fmt.Sprintf("Name %s does not match reqyested name %s",
+				oResp["name"], space.Name))
+		}
+
+		return resource.Metadata["guid"].(string)
+	} else {
+		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
+		return ""
+	}
+}
+
+func showOrgResult(resp []string, org Org) string {
 	oResp := make(map[string]interface{})
 	if len(resp) == 0 {
 		showWarning(fmt.Sprintf("Got null response while restoring org %s",
 			org.Name))
-		return
+		return ""
 	}
 	err := json.Unmarshal([]byte(resp[0]), &oResp)
 	if err != nil {
 		showWarning(fmt.Sprintf("Got unknow response while restoring org %s: %s",
 			org.Name, err.Error()))
-		return
+		return ""
 	}
 	if oResp["error_code"] != nil {
 		showWarning(fmt.Sprintf("got %v-%v while restoring org %s",
 			oResp["error_code"], oResp["description"], org.Name))
-		return
+		return ""
 	}
 
 	if oResp["entity"] != nil {
@@ -68,8 +128,11 @@ func showOrgResult(resp []string, org Org) {
 			showWarning(fmt.Sprintf("Name %s does not match reqyested name %s",
 				oResp["name"], org.Name))
 		}
+
+		return resource.Metadata["guid"].(string)
 	} else {
 		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
+		return ""
 	}
 }
 
@@ -84,13 +147,18 @@ func restoreFromJSON() {
 	backupObject, err := util.ReadBackupJSON(fileContent)
 	util.FreakOut(err)
 
-	resources := util.TransformToResources(backupObject.Organizations, make(map[string]interface{}), nil)
-	for _, org := range *resources {
-
+	orgs := util.TransformToResources(backupObject.Organizations, make(map[string]interface{}), nil)
+	for _, org := range *orgs {
 		o := Org{Name: org.Entity["name"].(string), QuotaGUID: org.Entity["quota_definition_guid"].(string)}
+		org_guid := restoreOrg(o)
 
-		restoreOrg(o)
-
+		if org_guid != "" {
+			spaces := org.Entity["spaces"].(*[]*models.ResourceModel)
+			for _, space := range *spaces {
+				s := Space{Name: space.Entity["name"].(string), OrganizationGuid: org_guid}
+				restoreSpace(s)
+			}
+		}
 	}
 }
 
