@@ -354,7 +354,7 @@ func CreateOrgCCResources(ccApi CCApi) *CCResources {
 	return ccResources
 }
 
-func GetOrgsResourcesRecurively(ccApi CCApi) (interface{}, error) {
+func GetOrgsResourcesRecurively(ccApi CCApi) (*[]*models.ResourceModel, error) {
 	ccResources := CreateOrgCCResources(ccApi)
 	resources := ccResources.GetResources(OrgsUrl, 10)
 
