@@ -159,10 +159,7 @@ func showOrgResult(resp []string, org Org) string {
 	}
 
 	if oResp["entity"] != nil {
-
-		resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
-
-		inName := fmt.Sprintf("%v", resource.Entity["name"])
+		inName := fmt.Sprintf("%v", oResp["entity"].(map[string]interface{})["name"])
 		if inName == org.Name {
 			showInfo(fmt.Sprintf("Succesfully restored org %s", org.Name))
 		} else {
@@ -231,7 +228,7 @@ func restoreFromJSON() {
 	backupObject, err := util.ReadBackupJSON(fileContent)
 	util.FreakOut(err)
 
-	orgs := util.TransformToResources(backupObject.Organizations, make(map[string]interface{}), nil)
+	orgs := util.RestoreOrgResourceModels(backupObject.Organizations)
 	for _, org := range *orgs {
 		o := Org{Name: org.Entity["name"].(string), QuotaGUID: org.Entity["quota_definition_guid"].(string)}
 		org_guid := restoreOrg(o)

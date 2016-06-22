@@ -12,16 +12,53 @@ import (
 	"github.com/hpcloud/cf-plugin-backup/models"
 )
 
+const UrlSuffix string = "_url"
+const OrgsUrl = "/v2/organizations"
+const ShardDomainsUrl = "/v2/shared_domains"
+
 type FollowDecision func(childKey string) bool
 
-func FollowRelation(cliConnection plugin.CliConnection, resource *models.ResourceModel, relationsDepth int, follow FollowDecision, cache map[string]interface{}) {
+type CCApi interface {
+	InvokeGet(path string) (string, error)
+}
+
+type CliConnectionCCApi struct {
+	CliConnection plugin.CliConnection
+}
+
+func (ccApi *CliConnectionCCApi) InvokeGet(path string) (string, error) {
+	output, err := ccApi.CliConnection.CliCommandWithoutTerminalOutput("curl", path, "-X", "GET")
+	return output[0], err
+}
+
+type CCResources struct {
+	ccApi CCApi
+
+	retriveCache   map[string]interface{}
+	transformCache map[string]interface{}
+
+	follow FollowDecision
+}
+
+func NewCCResources(ccApi CCApi, follow FollowDecision) *CCResources {
+	res := CCResources{}
+	res.ccApi = ccApi
+	res.follow = follow
+
+	res.retriveCache = make(map[string]interface{})
+	res.transformCache = make(map[string]interface{})
+
+	return &res
+}
+
+func (ccResources *CCResources) FollowRelation(resource *models.ResourceModel, relationsDepth int) {
 	if relationsDepth > 0 {
 		for k, childURL := range resource.Entity {
-			if strings.HasSuffix(k, models.UrlSuffix) {
-				childKey := strings.TrimSuffix(k, models.UrlSuffix)
+			if strings.HasSuffix(k, UrlSuffix) {
+				childKey := strings.TrimSuffix(k, UrlSuffix)
 				if _, ok := resource.Entity[childKey]; !ok {
-					if follow == nil || follow(childKey) {
-						childResource := GetGenericResource(cliConnection, childURL.(string), relationsDepth-1, follow, cache)
+					if ccResources.follow == nil || ccResources.follow(childKey) {
+						childResource := ccResources.GetGenericResource(childURL.(string), relationsDepth-1)
 						resource.Entity[childKey] = childResource
 					}
 				}
@@ -30,50 +67,50 @@ func FollowRelation(cliConnection plugin.CliConnection, resource *models.Resourc
 	}
 }
 
-func GetGenericResource(cliConnection plugin.CliConnection, url string, relationsDepth int, follow FollowDecision, cache map[string]interface{}) interface{} {
-	if cacheEntry, hit := cache[url]; hit {
+func (ccResources *CCResources) GetGenericResource(url string, relationsDepth int) interface{} {
+	if cacheEntry, hit := ccResources.retriveCache[url]; hit {
 		return cacheEntry
 	}
 
-	output, err := cliConnection.CliCommandWithoutTerminalOutput("curl", url, "-X", "GET")
+	output, err := ccResources.ccApi.InvokeGet(url)
 	FreakOut(err)
 
 	var result map[string]interface{}
 
-	err = json.Unmarshal([]byte(output[0]), &result)
+	err = json.Unmarshal([]byte(output), &result)
 	FreakOut(err)
 
 	if _, ok := result["total_results"]; ok {
-		return GetResources(cliConnection, url, relationsDepth, follow, cache)
+		return ccResources.GetResources(url, relationsDepth)
 	}
 
-	return GetResource(cliConnection, url, relationsDepth, follow, cache)
+	return ccResources.GetResource(url, relationsDepth)
 }
 
-func GetResource(cliConnection plugin.CliConnection, url string, relationsDepth int, follow FollowDecision, cache map[string]interface{}) *models.ResourceModel {
-	if cacheEntry, hit := cache[url]; hit {
+func (ccResources *CCResources) GetResource(url string, relationsDepth int) *models.ResourceModel {
+	if cacheEntry, hit := ccResources.retriveCache[url]; hit {
 		return cacheEntry.(*models.ResourceModel)
 	}
 
 	log.Println("Retrinving resource", url)
 
-	output, err := cliConnection.CliCommandWithoutTerminalOutput("curl", url, "-X", "GET")
+	output, err := ccResources.ccApi.InvokeGet(url)
 	FreakOut(err)
 
 	resource := &models.ResourceModel{}
 
-	err = json.Unmarshal([]byte(output[0]), &resource)
+	err = json.Unmarshal([]byte(output), &resource)
 	FreakOut(err)
 
-	cache[resource.Metadata["url"].(string)] = resource
+	ccResources.retriveCache[resource.Metadata["url"].(string)] = resource
 
-	FollowRelation(cliConnection, resource, relationsDepth, follow, cache)
+	ccResources.FollowRelation(resource, relationsDepth)
 
 	return resource
 }
 
-func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth int, follow FollowDecision, cache map[string]interface{}) *[]*models.ResourceModel {
-	if cacheEntry, hit := cache[url]; hit {
+func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]*models.ResourceModel {
+	if cacheEntry, hit := ccResources.retriveCache[url]; hit {
 		return cacheEntry.(*[]*models.ResourceModel)
 	}
 
@@ -85,29 +122,29 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 	for nextURL != "" {
 		collectionModel := models.ResourceCollectionModel{}
 
-		output, err := cliConnection.CliCommandWithoutTerminalOutput("curl", nextURL, "-X", "GET")
+		output, err := ccResources.ccApi.InvokeGet(nextURL)
 		FreakOut(err)
 
-		err = json.Unmarshal([]byte(output[0]), &collectionModel)
+		err = json.Unmarshal([]byte(output), &collectionModel)
 		FreakOut(err)
 
 		log.Printf("Retrived %v/%v from %v", len(allResources)+len(*collectionModel.Resources), collectionModel.TotalResults, url)
 
 		for _, resource := range *collectionModel.Resources {
-			if cacheEntry, hit := cache[resource.Metadata["url"].(string)]; hit {
+			if cacheEntry, hit := ccResources.retriveCache[resource.Metadata["url"].(string)]; hit {
 				resource = cacheEntry.(*models.ResourceModel)
 			} else {
-				cache[resource.Metadata["url"].(string)] = resource
+				ccResources.retriveCache[resource.Metadata["url"].(string)] = resource
 			}
 
 			allResources = append(allResources, resource)
-			FollowRelation(cliConnection, resource, relationsDepth, follow, cache)
+			ccResources.FollowRelation(resource, relationsDepth)
 		}
 
 		nextURL = collectionModel.NextURL
 	}
 
-	cache[url] = &allResources
+	ccResources.retriveCache[url] = &allResources
 
 	return &allResources
 }
@@ -185,26 +222,26 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 	return &result
 }
 
-func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]interface{}, follow FollowDecision) {
+func (ccResources *CCResources) RecreateLinkForEntity(resource *models.ResourceModel) {
 	for k, v := range resource.Entity {
-		if strings.HasSuffix(k, models.UrlSuffix) {
+		if strings.HasSuffix(k, UrlSuffix) {
 			childURL, isValidUrlEntry := v.(string)
 			if !isValidUrlEntry && childURL != "" {
 				continue
 			}
 
-			childKey := strings.TrimSuffix(k, models.UrlSuffix)
+			childKey := strings.TrimSuffix(k, UrlSuffix)
 
-			if !(follow == nil || follow(childKey)) {
+			if !(ccResources.follow == nil || ccResources.follow(childKey)) {
 				continue
 			}
 
 			if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
-				childResource := TransformToResourceGeneric(childEntity, cache, follow)
+				childResource := ccResources.TransformToResourceGeneric(childEntity)
 
 				resource.Entity[childKey] = childResource
 
-				if cacheEntry, hit := cache[childURL]; hit {
+				if cacheEntry, hit := ccResources.transformCache[childURL]; hit {
 					if resourceCacheEntry, isSingleResource := cacheEntry.(*models.ResourceModel); isSingleResource {
 						if resourceCacheEntry.Entity == nil {
 							child := childResource.(*models.ResourceModel)
@@ -212,10 +249,10 @@ func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]inte
 						}
 					}
 				} else {
-					cache[childURL] = childResource
+					ccResources.transformCache[childURL] = childResource
 				}
 			} else {
-				if cacheEntry, hit := cache[childURL]; hit {
+				if cacheEntry, hit := ccResources.transformCache[childURL]; hit {
 					resource.Entity[childKey] = cacheEntry
 				}
 			}
@@ -223,18 +260,18 @@ func RecreateLinkForEntity(resource *models.ResourceModel, cache map[string]inte
 	}
 }
 
-func TransformToResourceGeneric(r interface{}, cache map[string]interface{}, follow FollowDecision) interface{} {
+func (ccResources *CCResources) TransformToResourceGeneric(r interface{}) interface{} {
 	switch r.(type) {
 	case map[string]interface{}:
-		return TransformToResource(r, cache, follow)
+		return ccResources.TransformToResource(r)
 	case []interface{}:
-		return TransformToResources(r, cache, follow)
+		return ccResources.TransformToResources(r)
 	}
 
 	panic("unknown resource type")
 }
 
-func TransformToResource(resource interface{}, cache map[string]interface{}, follow FollowDecision) *models.ResourceModel {
+func (ccResources *CCResources) TransformToResource(resource interface{}) *models.ResourceModel {
 	resourceModel := models.ResourceModel{}
 
 	resourceValue := resource.(map[string]interface{})
@@ -245,7 +282,7 @@ func TransformToResource(resource interface{}, cache map[string]interface{}, fol
 	// Cache handling
 
 	resourceUrl := resourceModel.Metadata["url"].(string)
-	if cacheEntry, hit := cache[resourceUrl]; hit {
+	if cacheEntry, hit := ccResources.transformCache[resourceUrl]; hit {
 		cacheEntryValue := cacheEntry.(*models.ResourceModel)
 
 		cacheEntryHasEntity := cacheEntryValue.Entity != nil
@@ -256,31 +293,31 @@ func TransformToResource(resource interface{}, cache map[string]interface{}, fol
 			resourceModel.Entity = cacheEntryValue.Entity
 		}
 	} else {
-		cache[resourceUrl] = &resourceModel
+		ccResources.transformCache[resourceUrl] = &resourceModel
 	}
 
 	if hasEntity {
 		resourceModel.Entity = entity
-		RecreateLinkForEntity(&resourceModel, cache, follow)
+		ccResources.RecreateLinkForEntity(&resourceModel)
 	}
 
 	return &resourceModel
 }
 
-func TransformToResources(resources interface{}, cache map[string]interface{}, follow FollowDecision) *[]*models.ResourceModel {
+func (ccResources *CCResources) TransformToResources(resources interface{}) *[]*models.ResourceModel {
 	var result []*models.ResourceModel
 
 	resourceArray := resources.([]interface{})
 
 	for _, r := range resourceArray {
-		resourceModel := TransformToResource(r, cache, follow)
+		resourceModel := ccResources.TransformToResource(r)
 		result = append(result, resourceModel)
 	}
 
 	return &result
 }
 
-func GetOrgsResourcesRecurively(cliConnection plugin.CliConnection) (interface{}, error) {
+func CreateOrgCCResources(ccApi CCApi) *CCResources {
 	resourceUrlsWhitelistSlice := []interface{}{
 		"organizations",
 		"auditors", "managers", "billing_managers",
@@ -312,22 +349,41 @@ func GetOrgsResourcesRecurively(cliConnection plugin.CliConnection) (interface{}
 		return resourceUrlsWhitelist.Contains(childKey)
 	}
 
-	cache := make(map[string]interface{})
-	resources := GetResources(cliConnection, "/v2/organizations", 10, follow, cache)
+	ccResources := NewCCResources(ccApi, follow)
+
+	return ccResources
+}
+
+func GetOrgsResourcesRecurively(ccApi CCApi) (interface{}, error) {
+	ccResources := CreateOrgCCResources(ccApi)
+	resources := ccResources.GetResources(OrgsUrl, 10)
 
 	resources = BreakResourceLoops(resources)
 
 	return resources, nil
 }
 
-func GetSharedDomains(cliConnection plugin.CliConnection) (interface{}, error) {
-
+func CreateSharedDomainsCCResources(ccApi CCApi) *CCResources {
 	follow := func(childKey string) bool {
 		return false
 	}
 
-	cache := make(map[string]interface{})
-	resources := GetResources(cliConnection, "/v2/shared_domains", 1, follow, cache)
+	ccResources := NewCCResources(ccApi, follow)
+
+	return ccResources
+}
+
+func RestoreOrgResourceModels(orgResources interface{}) *[]*models.ResourceModel {
+	ccResources := CreateOrgCCResources(nil)
+	transformedRes := ccResources.TransformToResources(orgResources)
+
+	return transformedRes
+}
+
+func GetSharedDomains(ccApi CCApi) (interface{}, error) {
+	ccResources := CreateSharedDomainsCCResources(ccApi)
+
+	resources := ccResources.GetResources(ShardDomainsUrl, 1)
 	resources = BreakResourceLoops(resources)
 
 	return resources, nil
