@@ -4,6 +4,7 @@ package util
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -79,8 +80,12 @@ func (downloader *CFDownloader) GetDroplet(guid string) ([]byte, error) {
 	if nil != err {
 		return nil, err
 	}
-	log.Println("the body")
 	body, err := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Download failed. Status Code: %v. Body: %v", resp.Status, string(body))
+	}
+
 	return body, err
 }
 
@@ -103,7 +108,6 @@ type CFDroplet struct {
 
 //NewCFDroplet builds a new CF droplet
 func NewCFDroplet(cli plugin.CliConnection, downloader Downloader) *CFDroplet {
-	log.Printf("Downloader = %v ", downloader)
 	return &CFDroplet{
 		Cli:        cli,
 		Downloader: downloader,

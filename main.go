@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/cloudfoundry/cli/cf/terminal"
@@ -23,6 +24,14 @@ type BackupPlugin struct {
 }
 
 func main() {
+	log.SetOutput(commands.Writer)
+
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Panic in Backup plugin", r)
+		}
+	}()
+
 	plugin.Start(new(BackupPlugin))
 }
 

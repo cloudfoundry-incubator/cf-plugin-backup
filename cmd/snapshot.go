@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -60,16 +60,18 @@ var snapshotCmd = &cobra.Command{
 			util.FreakOut(err)
 		}
 
-		resources := util.TransformToResources(backupModel.Organizations, make(map[string]interface{}))
+		resources := util.TransformToResources(backupModel.Organizations, make(map[string]interface{}), nil)
 		for _, org := range *resources {
 			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
 				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
 					appGuid := app.Metadata["guid"].(string)
-					fmt.Println("Saving bits for application", app.Entity["name"], appGuid)
+					log.Println("Saving bits for application", app.Entity["name"], appGuid)
 
 					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
 					err := appBits.SaveDroplet(appGuid, appZipPath)
-					util.FreakOut(err)
+					if err != nil {
+						log.Printf("Could not save bits for %v: %v", appGuid, err)
+					}
 				}
 			}
 		}
