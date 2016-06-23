@@ -320,6 +320,7 @@ func (ccResources *CCResources) TransformToResources(resources interface{}) *[]*
 func CreateOrgCCResources(ccApi CCApi) *CCResources {
 	resourceUrlsWhitelistSlice := []interface{}{
 		"organizations",
+		"organization",
 		"auditors", "managers", "billing_managers",
 		"quota_definition",
 
