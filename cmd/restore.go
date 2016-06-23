@@ -72,7 +72,7 @@ func getUserId(user string) string {
 }
 
 func restoreOrg(org Org) string {
-	showInfo(fmt.Sprintf("Restaurating Org: %s", org.Name))
+	showInfo(fmt.Sprintf("Restoring Organization: %s", org.Name))
 	oJson, err := json.Marshal(org)
 	util.FreakOut(err)
 
