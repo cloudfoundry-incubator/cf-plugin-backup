@@ -121,10 +121,7 @@ func showSpaceResult(resp []string, space Space) string {
 	}
 
 	if oResp["entity"] != nil {
-
-		resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
-
-		inName := fmt.Sprintf("%v", resource.Entity["name"])
+		inName := (oResp["entity"].(map[string]interface{}))["name"].(string)
 		if inName == space.Name {
 			showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
 		} else {
@@ -132,7 +129,7 @@ func showSpaceResult(resp []string, space Space) string {
 				oResp["name"], space.Name))
 		}
 
-		return resource.Metadata["guid"].(string)
+		return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 	} else {
 		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
 		return ""
@@ -159,7 +156,7 @@ func showOrgResult(resp []string, org Org) string {
 	}
 
 	if oResp["entity"] != nil {
-		inName := fmt.Sprintf("%v", oResp["entity"].(map[string]interface{})["name"])
+		inName := oResp["entity"].(map[string]interface{})["name"].(string)
 		if inName == org.Name {
 			showInfo(fmt.Sprintf("Succesfully restored org %s", org.Name))
 		} else {
@@ -167,7 +164,7 @@ func showOrgResult(resp []string, org Org) string {
 				oResp["name"], org.Name))
 		}
 
-		return resource.Metadata["guid"].(string)
+		return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 	} else {
 		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
 		return ""
