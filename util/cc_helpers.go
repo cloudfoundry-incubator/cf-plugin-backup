@@ -355,6 +355,18 @@ func CreateOrgCCResources(ccApi CCApi) *CCResources {
 	return ccResources
 }
 
+func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth int) *[]*models.ResourceModel {
+	follow := func(childKey string) bool {
+		return false
+	}
+
+	ccResources := NewCCResources(&CliConnectionCCApi{CliConnection: cliConnection}, follow)
+
+	resources := ccResources.GetResources(url, relationsDepth)
+
+	return resources
+}
+
 func GetOrgsResourcesRecurively(ccApi CCApi) (*[]*models.ResourceModel, error) {
 	ccResources := CreateOrgCCResources(ccApi)
 	resources := ccResources.GetResources(OrgsUrl, 10)

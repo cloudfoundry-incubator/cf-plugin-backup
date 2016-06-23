@@ -60,8 +60,7 @@ func restoreUser(user, space, role string) string {
 }
 
 func getUserId(user string) string {
-	cache := make(map[string]interface{})
-	resources := util.GetResources(CliConnection, "/v2/users", 1, nil, cache)
+	resources := util.GetResources(CliConnection, "/v2/users", 1)
 	for _, u := range *resources {
 		if u.Entity["username"].(string) == user {
 			return u.Metadata["guid"].(string)
@@ -192,13 +191,11 @@ func showResult(resp []string, entity, name string, checkName bool) string {
 
 	if checkName {
 		if oResp["entity"] != nil {
-
-			resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
-			inName := fmt.Sprintf("%v", resource.Entity["name"])
+			inName := (oResp["entity"].(map[string]interface{}))["name"].(string)
 			if inName == name {
 				showInfo(fmt.Sprintf("Succesfully restored %s %s", entity, name))
-				if resource.Metadata != nil {
-					return resource.Metadata["guid"].(string)
+				if oResp["metadata"] != nil {
+					return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 				}
 			} else {
 				showWarning(fmt.Sprintf("Name %s does not match requested name %s",
