@@ -1,7 +1,5 @@
 package models
 
-const UrlSuffix string = "_url"
-
 type ResourceCollectionModel struct {
 	TotalResults int               `json:"total_results"`
 	TotalPages   int               `json:"total_pages"`

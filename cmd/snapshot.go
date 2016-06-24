@@ -7,19 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cloudfoundry/cli/plugin"
 	"github.com/spf13/cobra"
 
 	"github.com/hpcloud/cf-plugin-backup/models"
 	"github.com/hpcloud/cf-plugin-backup/util"
 )
-
-func GetAllOrganizations(cliConnection plugin.CliConnection) string {
-	resources := util.GetResources(cliConnection, "/v2/organizations", 1, nil, nil)
-	jsonResources, err := json.MarshalIndent(resources, "", " ")
-	util.FreakOut(err)
-	return string(jsonResources)
-}
 
 // snapshotCmd represents the snapshot command
 var snapshotCmd = &cobra.Command{
@@ -28,10 +20,10 @@ var snapshotCmd = &cobra.Command{
 	Long: `Create a new CloudFoundry backup snapshot to a local file.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		backupResources, err := util.GetOrgsResourcesRecurively(CliConnection)
+		backupResources, err := util.GetOrgsResourcesRecurively(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 
-		sharedDomains, err := util.GetSharedDomains(CliConnection)
+		sharedDomains, err := util.GetSharedDomains(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 
 		backupJson, err := util.CreateBackupJSON(models.BackupModel{
@@ -60,7 +52,7 @@ var snapshotCmd = &cobra.Command{
 			util.FreakOut(err)
 		}
 
-		resources := util.TransformToResources(backupModel.Organizations, make(map[string]interface{}), nil)
+		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
 		for _, org := range *resources {
 			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
 				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {

@@ -60,8 +60,7 @@ func restoreUser(user, space, role string) string {
 }
 
 func getUserId(user string) string {
-	cache := make(map[string]interface{})
-	resources := util.GetResources(CliConnection, "/v2/users", 1, nil, cache)
+	resources := util.GetResources(CliConnection, "/v2/users", 1)
 	for _, u := range *resources {
 		if u.Entity["username"].(string) == user {
 			return u.Metadata["guid"].(string)
@@ -72,7 +71,7 @@ func getUserId(user string) string {
 }
 
 func restoreOrg(org Org) string {
-	showInfo(fmt.Sprintf("Restaurating Org: %s", org.Name))
+	showInfo(fmt.Sprintf("Restoring Organization: %s", org.Name))
 	oJson, err := json.Marshal(org)
 	util.FreakOut(err)
 
@@ -121,10 +120,7 @@ func showSpaceResult(resp []string, space Space) string {
 	}
 
 	if oResp["entity"] != nil {
-
-		resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
-
-		inName := fmt.Sprintf("%v", resource.Entity["name"])
+		inName := (oResp["entity"].(map[string]interface{}))["name"].(string)
 		if inName == space.Name {
 			showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
 		} else {
@@ -132,7 +128,7 @@ func showSpaceResult(resp []string, space Space) string {
 				oResp["name"], space.Name))
 		}
 
-		return resource.Metadata["guid"].(string)
+		return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 	} else {
 		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
 		return ""
@@ -159,10 +155,7 @@ func showOrgResult(resp []string, org Org) string {
 	}
 
 	if oResp["entity"] != nil {
-
-		resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
-
-		inName := fmt.Sprintf("%v", resource.Entity["name"])
+		inName := oResp["entity"].(map[string]interface{})["name"].(string)
 		if inName == org.Name {
 			showInfo(fmt.Sprintf("Succesfully restored org %s", org.Name))
 		} else {
@@ -170,7 +163,7 @@ func showOrgResult(resp []string, org Org) string {
 				oResp["name"], org.Name))
 		}
 
-		return resource.Metadata["guid"].(string)
+		return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 	} else {
 		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
 		return ""
@@ -198,13 +191,11 @@ func showResult(resp []string, entity, name string, checkName bool) string {
 
 	if checkName {
 		if oResp["entity"] != nil {
-
-			resource := util.TransformToResource(oResp, make(map[string]interface{}), nil)
-			inName := fmt.Sprintf("%v", resource.Entity["name"])
+			inName := (oResp["entity"].(map[string]interface{}))["name"].(string)
 			if inName == name {
 				showInfo(fmt.Sprintf("Succesfully restored %s %s", entity, name))
-				if resource.Metadata != nil {
-					return resource.Metadata["guid"].(string)
+				if oResp["metadata"] != nil {
+					return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 				}
 			} else {
 				showWarning(fmt.Sprintf("Name %s does not match requested name %s",
@@ -231,7 +222,7 @@ func restoreFromJSON() {
 	backupObject, err := util.ReadBackupJSON(fileContent)
 	util.FreakOut(err)
 
-	orgs := util.TransformToResources(backupObject.Organizations, make(map[string]interface{}), nil)
+	orgs := util.RestoreOrgResourceModels(backupObject.Organizations)
 	for _, org := range *orgs {
 		o := Org{Name: org.Entity["name"].(string), QuotaGUID: org.Entity["quota_definition_guid"].(string)}
 		org_guid := restoreOrg(o)

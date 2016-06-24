@@ -28,7 +28,7 @@ It includes a summary of organizations, spaces and apps
 		err = json.Unmarshal(backupJson, &backupModel)
 		util.FreakOut(err)
 
-		resources := util.TransformToResources(backupModel.Organizations, make(map[string]interface{}), nil)
+		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
 		for _, org := range *resources {
 			fmt.Println("-", "Org ", org.Entity["name"])
 			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
