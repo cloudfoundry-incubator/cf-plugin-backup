@@ -13,13 +13,6 @@ type ResourceModel struct {
 	Entity   map[string]interface{} `json:"entity"`
 }
 
-type MetadataModel struct {
-	Guid      string `json:"guid"`
-	Url       string `json:"url"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-}
-
 type BackupModel struct {
 	Organizations interface{} `json:"organizations"`
 	SharedDomains interface{} `json:"shared_domains"`
