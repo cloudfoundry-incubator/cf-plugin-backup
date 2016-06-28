@@ -149,19 +149,24 @@ func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]
 	return &allResources
 }
 
+type bfsElement struct {
+	Depth    int
+	Resource *models.ResourceModel
+}
+
 func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceModel {
 	var result []*models.ResourceModel
 
-	visitedResourceMap := make(map[interface{}]bool)
+	visitedResourceMap := make(map[interface{}]int)
 	queue := list.New()
 
 	for _, resource := range *resources {
-		visitedResourceMap[resource] = true
+		visitedResourceMap[resource] = 0
 
 		resourceCopy := *resource
 		result = append(result, &resourceCopy)
 
-		queue.PushBack(&resourceCopy)
+		queue.PushBack(&bfsElement{Depth: 0, Resource: &resourceCopy})
 	}
 
 	for {
@@ -170,21 +175,25 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 			break
 		}
 
-		resource := e.Value.(*models.ResourceModel)
+		queueElement := e.Value.(*bfsElement)
+		currentDepth := queueElement.Depth
+		resource := queueElement.Resource
 
 		for childKey, childValue := range resource.Entity {
 			// Single value
 			singleChildResource, isResourceModel := childValue.(*models.ResourceModel)
 			if isResourceModel {
-				if _, visited := visitedResourceMap[singleChildResource]; !visited {
-					visitedResourceMap[singleChildResource] = true
+				if cacheDepth, visited := visitedResourceMap[singleChildResource]; !visited {
+					visitedResourceMap[singleChildResource] = currentDepth
 
 					copyValue := *singleChildResource
 					resource.Entity[childKey] = &copyValue
 
-					queue.PushBack(&copyValue)
+					queue.PushBack(&bfsElement{Depth: currentDepth + 1, Resource: &copyValue})
 				} else {
-					delete(resource.Entity, childKey)
+					if cacheDepth < currentDepth {
+						delete(resource.Entity, childKey)
+					}
 				}
 
 			}
@@ -192,8 +201,8 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 			// Array
 			multipleChildResources, isResourceModel := childValue.(*[]*models.ResourceModel)
 			if isResourceModel {
-				if _, visited := visitedResourceMap[multipleChildResources]; !visited {
-					visitedResourceMap[multipleChildResources] = true
+				if cacheDepth, visited := visitedResourceMap[multipleChildResources]; !visited {
+					visitedResourceMap[multipleChildResources] = currentDepth
 
 					var multipleChildResourcesCopy []*models.ResourceModel
 
@@ -202,8 +211,8 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 						multipleChildResourcesCopy = append(multipleChildResourcesCopy, &childResourceCopy)
 
 						if _, visited := visitedResourceMap[childResource]; !visited {
-							visitedResourceMap[childResource] = true
-							queue.PushBack(&childResourceCopy)
+							visitedResourceMap[childResource] = currentDepth
+							queue.PushBack(&bfsElement{Depth: currentDepth + 1, Resource: &childResourceCopy})
 						} else {
 							childResourceCopy.Entity = nil
 						}
@@ -211,7 +220,9 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 						resource.Entity[childKey] = &multipleChildResourcesCopy
 					}
 				} else {
-					delete(resource.Entity, childKey)
+					if cacheDepth < currentDepth {
+						delete(resource.Entity, childKey)
+					}
 				}
 			}
 		}
