@@ -15,6 +15,7 @@ import (
 const UrlSuffix string = "_url"
 const OrgsUrl = "/v2/organizations"
 const ShardDomainsUrl = "/v2/shared_domains"
+const SecurityGroupsUrl = "/v2/security_groups"
 
 type FollowDecision func(childKey string) bool
 
@@ -34,8 +35,8 @@ func (ccApi *CliConnectionCCApi) InvokeGet(path string) (string, error) {
 type CCResources struct {
 	ccApi CCApi
 
-	retriveCache   map[string]interface{}
-	transformCache map[string]interface{}
+	jsonRetriveCache map[string][]byte
+	transformCache   map[string]interface{}
 
 	follow FollowDecision
 }
@@ -45,129 +46,125 @@ func NewCCResources(ccApi CCApi, follow FollowDecision) *CCResources {
 	res.ccApi = ccApi
 	res.follow = follow
 
-	res.retriveCache = make(map[string]interface{})
+	res.jsonRetriveCache = make(map[string][]byte)
 	res.transformCache = make(map[string]interface{})
 
 	return &res
 }
 
-func (ccResources *CCResources) FollowRelation(resource *models.ResourceModel, relationsDepth int) {
-	if relationsDepth > 0 {
-		for k, childURL := range resource.Entity {
-			if strings.HasSuffix(k, UrlSuffix) {
-				childKey := strings.TrimSuffix(k, UrlSuffix)
-				if _, ok := resource.Entity[childKey]; !ok {
-					if ccResources.follow == nil || ccResources.follow(childKey) {
-						childResource := ccResources.GetGenericResource(childURL.(string), relationsDepth-1)
-						resource.Entity[childKey] = childResource
-					}
+func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, error) {
+	var result []byte
+
+	if cacheResult, cacheHit := ccResources.jsonRetriveCache[url]; cacheHit {
+		result = cacheResult
+	} else {
+		log.Println("Retrinving resource", url)
+
+		output, err := ccResources.ccApi.InvokeGet(url)
+		if err != nil {
+			return nil, err
+		}
+
+		var parsedOutput map[string]interface{}
+
+		err = json.Unmarshal([]byte(output), &parsedOutput)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, isArray := parsedOutput["total_results"]; isArray {
+			nextURL := url
+			allResources := make([]interface{}, 0)
+
+			for nextURL != "" {
+				output, err := ccResources.ccApi.InvokeGet(nextURL)
+				if err != nil {
+					return nil, err
+				}
+
+				var collection map[string]interface{}
+				err = json.Unmarshal([]byte(output), &collection)
+				if err != nil {
+					return nil, err
+				}
+
+				allResources = append(allResources, collection["resources"].([]interface{})...)
+
+				if collection["next_url"] != nil {
+					nextURL = collection["next_url"].(string)
+				} else {
+					nextURL = ""
 				}
 			}
-		}
-	}
-}
 
-func (ccResources *CCResources) GetGenericResource(url string, relationsDepth int) interface{} {
-	if cacheEntry, hit := ccResources.retriveCache[url]; hit {
-		return cacheEntry
-	}
+			parsedOutput["next_url"] = nil
+			parsedOutput["prev_url"] = nil
+			parsedOutput["total_pages"] = 1
+			parsedOutput["total_results"] = len(allResources)
+			parsedOutput["resources"] = allResources
 
-	output, err := ccResources.ccApi.InvokeGet(url)
-	FreakOut(err)
+			for _, element := range allResources {
+				metadata := element.(map[string]interface{})["metadata"]
+				elementUrl := metadata.(map[string]interface{})["url"].(string)
+				jsonElement, err := json.Marshal(element)
+				if err != nil {
+					return nil, err
+				}
 
-	var result map[string]interface{}
-
-	err = json.Unmarshal([]byte(output), &result)
-	FreakOut(err)
-
-	if _, ok := result["total_results"]; ok {
-		return ccResources.GetResources(url, relationsDepth)
-	}
-
-	return ccResources.GetResource(url, relationsDepth)
-}
-
-func (ccResources *CCResources) GetResource(url string, relationsDepth int) *models.ResourceModel {
-	if cacheEntry, hit := ccResources.retriveCache[url]; hit {
-		return cacheEntry.(*models.ResourceModel)
-	}
-
-	log.Println("Retrinving resource", url)
-
-	output, err := ccResources.ccApi.InvokeGet(url)
-	FreakOut(err)
-
-	resource := &models.ResourceModel{}
-
-	err = json.Unmarshal([]byte(output), &resource)
-	FreakOut(err)
-
-	ccResources.retriveCache[resource.Metadata["url"].(string)] = resource
-
-	ccResources.FollowRelation(resource, relationsDepth)
-
-	return resource
-}
-
-func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]*models.ResourceModel {
-	if cacheEntry, hit := ccResources.retriveCache[url]; hit {
-		return cacheEntry.(*[]*models.ResourceModel)
-	}
-
-	log.Println("Retrinving resources from", url)
-
-	nextURL := url
-	allResources := make([]*models.ResourceModel, 0)
-
-	for nextURL != "" {
-		collectionModel := models.ResourceCollectionModel{}
-
-		output, err := ccResources.ccApi.InvokeGet(nextURL)
-		FreakOut(err)
-
-		err = json.Unmarshal([]byte(output), &collectionModel)
-		FreakOut(err)
-
-		log.Printf("Retrived %v/%v from %v", len(allResources)+len(*collectionModel.Resources), collectionModel.TotalResults, url)
-
-		for _, resource := range *collectionModel.Resources {
-			if cacheEntry, hit := ccResources.retriveCache[resource.Metadata["url"].(string)]; hit {
-				resource = cacheEntry.(*models.ResourceModel)
-			} else {
-				ccResources.retriveCache[resource.Metadata["url"].(string)] = resource
+				ccResources.jsonRetriveCache[elementUrl] = jsonElement
 			}
-
-			allResources = append(allResources, resource)
-			ccResources.FollowRelation(resource, relationsDepth)
 		}
 
-		nextURL = collectionModel.NextURL
+		jsonOutput, err := json.Marshal(parsedOutput)
+		if err != nil {
+			return nil, err
+		}
+
+		ccResources.jsonRetriveCache[url] = jsonOutput
+		result = jsonOutput
 	}
 
-	ccResources.retriveCache[url] = &allResources
-
-	return &allResources
+	return result, nil
 }
 
-type bfsElement struct {
-	Depth    int
-	Resource *models.ResourceModel
+func (ccResources *CCResources) retriveParsedGenericResource(url string) (interface{}, error) {
+	jsonOutput, err := ccResources.retriveJsonGenericResource(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var collection *models.ResourceCollectionModel
+
+	err = json.Unmarshal([]byte(jsonOutput), &collection)
+	if err == nil && collection.TotalPages > 0 {
+		if collection.Resources != nil {
+			return collection.Resources, nil
+		} else {
+			emptyResult := make([]*models.ResourceModel, 0)
+			return &emptyResult, nil
+		}
+	}
+
+	var singleValue *models.ResourceModel
+	err = json.Unmarshal([]byte(jsonOutput), &singleValue)
+	if err == nil {
+		return singleValue, nil
+	}
+
+	return nil, err
 }
 
-func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceModel {
-	var result []*models.ResourceModel
+type retriveQueueItem struct {
+	resourceTarget interface{}
+	depth          int
+}
 
-	visitedResourceMap := make(map[interface{}]int)
+func (ccResources *CCResources) GetGenericResource(startUrl string, relationsDepth int) interface{} {
+	startResource, err := ccResources.retriveParsedGenericResource(startUrl)
+	FreakOut(err)
+
 	queue := list.New()
-
-	for _, resource := range *resources {
-		visitedResourceMap[resource] = 0
-
-		resourceCopy := *resource
-		result = append(result, &resourceCopy)
-
-		queue.PushBack(&bfsElement{Depth: 0, Resource: &resourceCopy})
-	}
+	queue.PushBack(retriveQueueItem{resourceTarget: startResource, depth: 0})
 
 	for {
 		e := queue.Front()
@@ -175,62 +172,50 @@ func BreakResourceLoops(resources *[]*models.ResourceModel) *[]*models.ResourceM
 			break
 		}
 
-		queueElement := e.Value.(*bfsElement)
-		currentDepth := queueElement.Depth
-		resource := queueElement.Resource
+		queueElement := e.Value.(retriveQueueItem)
+		currentDepth := queueElement.depth
 
-		for childKey, childValue := range resource.Entity {
-			// Single value
-			singleChildResource, isResourceModel := childValue.(*models.ResourceModel)
-			if isResourceModel {
-				if cacheDepth, visited := visitedResourceMap[singleChildResource]; !visited {
-					visitedResourceMap[singleChildResource] = currentDepth
+		if currentDepth < relationsDepth {
 
-					copyValue := *singleChildResource
-					resource.Entity[childKey] = &copyValue
-
-					queue.PushBack(&bfsElement{Depth: currentDepth + 1, Resource: &copyValue})
-				} else {
-					if cacheDepth < currentDepth {
-						delete(resource.Entity, childKey)
-					}
+			if listOfResources, isArray := queueElement.resourceTarget.(*[]*models.ResourceModel); isArray {
+				for _, resource := range *listOfResources {
+					queue.PushBack(retriveQueueItem{resourceTarget: resource, depth: currentDepth})
 				}
+			} else {
+				resource := queueElement.resourceTarget.(*models.ResourceModel)
 
-			}
+				for entityKey, entityValue := range resource.Entity {
+					if strings.HasSuffix(entityKey, UrlSuffix) {
+						childEntity := strings.TrimSuffix(entityKey, UrlSuffix)
+						childURL := entityValue.(string)
 
-			// Array
-			multipleChildResources, isResourceModel := childValue.(*[]*models.ResourceModel)
-			if isResourceModel {
-				if cacheDepth, visited := visitedResourceMap[multipleChildResources]; !visited {
-					visitedResourceMap[multipleChildResources] = currentDepth
+						if ccResources.follow == nil || ccResources.follow(childEntity) {
+							childResource, err := ccResources.retriveParsedGenericResource(childURL)
+							FreakOut(err)
 
-					var multipleChildResourcesCopy []*models.ResourceModel
-
-					for _, childResource := range *multipleChildResources {
-						childResourceCopy := *childResource
-						multipleChildResourcesCopy = append(multipleChildResourcesCopy, &childResourceCopy)
-
-						if _, visited := visitedResourceMap[childResource]; !visited {
-							visitedResourceMap[childResource] = currentDepth
-							queue.PushBack(&bfsElement{Depth: currentDepth + 1, Resource: &childResourceCopy})
-						} else {
-							childResourceCopy.Entity = nil
+							resource.Entity[childEntity] = childResource
+							queue.PushBack(retriveQueueItem{resourceTarget: childResource, depth: currentDepth + 1})
 						}
-
-						resource.Entity[childKey] = &multipleChildResourcesCopy
-					}
-				} else {
-					if cacheDepth < currentDepth {
-						delete(resource.Entity, childKey)
 					}
 				}
+
 			}
 		}
 
 		queue.Remove(e)
 	}
 
-	return &result
+	return startResource
+}
+
+func (ccResources *CCResources) GetResource(url string, relationsDepth int) *models.ResourceModel {
+	res := ccResources.GetGenericResource(url, relationsDepth)
+	return res.(*models.ResourceModel)
+}
+
+func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]*models.ResourceModel {
+	res := ccResources.GetGenericResource(url, relationsDepth)
+	return res.(*[]*models.ResourceModel)
 }
 
 func (ccResources *CCResources) RecreateLinkForEntity(resource *models.ResourceModel) {
@@ -248,7 +233,7 @@ func (ccResources *CCResources) RecreateLinkForEntity(resource *models.ResourceM
 			}
 
 			if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
-				childResource := ccResources.TransformToResourceGeneric(childEntity)
+				childResource := ccResources.TransformToResourceModelGeneric(childEntity)
 
 				resource.Entity[childKey] = childResource
 
@@ -271,18 +256,18 @@ func (ccResources *CCResources) RecreateLinkForEntity(resource *models.ResourceM
 	}
 }
 
-func (ccResources *CCResources) TransformToResourceGeneric(r interface{}) interface{} {
+func (ccResources *CCResources) TransformToResourceModelGeneric(r interface{}) interface{} {
 	switch r.(type) {
 	case map[string]interface{}:
-		return ccResources.TransformToResource(r)
+		return ccResources.TransformToResourceModel(r)
 	case []interface{}:
-		return ccResources.TransformToResources(r)
+		return ccResources.TransformToResourceModels(r)
 	}
 
 	panic("unknown resource type")
 }
 
-func (ccResources *CCResources) TransformToResource(resource interface{}) *models.ResourceModel {
+func (ccResources *CCResources) TransformToResourceModel(resource interface{}) *models.ResourceModel {
 	resourceModel := models.ResourceModel{}
 
 	resourceValue := resource.(map[string]interface{})
@@ -315,13 +300,13 @@ func (ccResources *CCResources) TransformToResource(resource interface{}) *model
 	return &resourceModel
 }
 
-func (ccResources *CCResources) TransformToResources(resources interface{}) *[]*models.ResourceModel {
+func (ccResources *CCResources) TransformToResourceModels(resources interface{}) *[]*models.ResourceModel {
 	var result []*models.ResourceModel
 
 	resourceArray := resources.([]interface{})
 
 	for _, r := range resourceArray {
-		resourceModel := ccResources.TransformToResource(r)
+		resourceModel := ccResources.TransformToResourceModel(r)
 		result = append(result, resourceModel)
 	}
 
@@ -380,9 +365,7 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 
 func GetOrgsResourcesRecurively(ccApi CCApi) (*[]*models.ResourceModel, error) {
 	ccResources := CreateOrgCCResources(ccApi)
-	resources := ccResources.GetResources(OrgsUrl, 10)
-
-	resources = BreakResourceLoops(resources)
+	resources := ccResources.GetResources(OrgsUrl, 5)
 
 	return resources, nil
 }
@@ -397,9 +380,25 @@ func CreateSharedDomainsCCResources(ccApi CCApi) *CCResources {
 	return ccResources
 }
 
+func CreateSecurityGroupsCCResources(ccApi CCApi) *CCResources {
+	resourceUrlsWhitelistSlice := []interface{}{
+		"spaces",
+		"organization",
+	}
+	resourceUrlsWhitelist := mapset.NewSetFromSlice(resourceUrlsWhitelistSlice)
+
+	follow := func(childKey string) bool {
+		return resourceUrlsWhitelist.Contains(childKey)
+	}
+
+	ccResources := NewCCResources(ccApi, follow)
+
+	return ccResources
+}
+
 func RestoreOrgResourceModels(orgResources interface{}) *[]*models.ResourceModel {
 	ccResources := CreateOrgCCResources(nil)
-	transformedRes := ccResources.TransformToResources(orgResources)
+	transformedRes := ccResources.TransformToResourceModels(orgResources)
 
 	return transformedRes
 }
@@ -408,7 +407,14 @@ func GetSharedDomains(ccApi CCApi) (interface{}, error) {
 	ccResources := CreateSharedDomainsCCResources(ccApi)
 
 	resources := ccResources.GetResources(ShardDomainsUrl, 1)
-	resources = BreakResourceLoops(resources)
+
+	return resources, nil
+}
+
+func GetSecurityGroups(ccApi CCApi) (interface{}, error) {
+	ccResources := CreateSecurityGroupsCCResources(ccApi)
+
+	resources := ccResources.GetResources(SecurityGroupsUrl, 2)
 
 	return resources, nil
 }

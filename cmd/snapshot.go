@@ -26,9 +26,13 @@ var snapshotCmd = &cobra.Command{
 		sharedDomains, err := util.GetSharedDomains(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 
+		securityGroups, err := util.GetSecurityGroups(&util.CliConnectionCCApi{CliConnection: CliConnection})
+		util.FreakOut(err)
+
 		backupJson, err := util.CreateBackupJSON(models.BackupModel{
-			Organizations: backupResources,
-			SharedDomains: sharedDomains,
+			Organizations:  backupResources,
+			SharedDomains:  sharedDomains,
+			SecurityGroups: securityGroups,
 		})
 		util.FreakOut(err)
 
