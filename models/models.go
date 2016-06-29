@@ -14,6 +14,7 @@ type ResourceModel struct {
 }
 
 type BackupModel struct {
-	Organizations interface{} `json:"organizations"`
-	SharedDomains interface{} `json:"shared_domains"`
+	Organizations  interface{} `json:"organizations"`
+	SharedDomains  interface{} `json:"shared_domains"`
+	SecurityGroups interface{} `json:"security_groups"`
 }

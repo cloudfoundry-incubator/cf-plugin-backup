@@ -1,6 +1,8 @@
 package util_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hpcloud/cf-plugin-backup/models"
@@ -12,7 +14,12 @@ type CCApiMock struct {
 }
 
 func (ccApi *CCApiMock) InvokeGet(url string) (string, error) {
-	return ccApi.Responses[url], nil
+	response, found := ccApi.Responses[url]
+	if !found {
+		return "", fmt.Errorf("CC URL not found: %v", url)
+	}
+
+	return response, nil
 }
 
 var fakeRecursiveResponses map[string]string = map[string]string{
@@ -187,22 +194,28 @@ func TestGetResources_RecurseWithLoops(t *testing.T) {
 	}
 }
 
-func TestGetResources_RecurseWithoutLoops(t *testing.T) {
-	ccApi := CCApiMock{Responses: fakeRecursiveResponses}
+func TestGetResources_StacksArePulled(t *testing.T) {
+	fakeResponses := map[string]string{}
+	err := json.Unmarshal([]byte(ccRecording1), &fakeResponses)
 
-	ccResources := util.CreateOrgCCResources(&ccApi)
-	result := ccResources.GetResources(util.OrgsUrl, 10)
+	if err != nil {
+		t.Fatal("json.Unmarshal failed", err)
+	}
+	ccApi := CCApiMock{Responses: fakeResponses}
 
-	result = util.BreakResourceLoops(result)
+	result, err := util.GetOrgsResourcesRecurively(&ccApi)
+	if err != nil {
+		t.Fatal("GetOrgsResourcesRecurively failed", err)
+	}
 
-	if len(*result) != 1 {
+	if len(*result) != 2 {
 		t.Fatal("result is not of length 1")
 	}
 
 	o1org := *(*result)[0]
 
-	if o1org.Entity["name"] != "o1" {
-		t.Fatal("oranization name not equal to o1")
+	if o1org.Entity["name"] != "o" {
+		t.Fatal("oranization name not equal to o")
 	}
 
 	spaces := *(o1org.Entity["spaces"]).(*[]*models.ResourceModel)
@@ -211,13 +224,18 @@ func TestGetResources_RecurseWithoutLoops(t *testing.T) {
 		t.Fatal("spaces are missing")
 	}
 
-	if spaces[0].Entity["name"] != "s1" {
+	if spaces[0].Entity["name"] != "s" {
 		t.Fatal("invalid space name")
 	}
 
-	orgRefFromSpace := spaces[0].Entity["organization"]
+	sapps := *(spaces[0].Entity["apps"].(*[]*models.ResourceModel))
+	if len(sapps) != 4 {
+		t.Fatal("apps are missing, expected 4 found ", len(sapps))
+	}
 
-	if orgRefFromSpace != nil {
-		t.Fatal("loop detected")
+	for _, iapp := range sapps {
+		if iapp.Entity["stack"] == nil && iapp.Entity["stack_url"] != nil {
+			t.Fatal("stack is missing for ", iapp.Entity["name"].(string), iapp)
+		}
 	}
 }
