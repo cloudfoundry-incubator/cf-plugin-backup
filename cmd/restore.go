@@ -1,10 +1,16 @@
 package cmd
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
+	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/hpcloud/cf-plugin-backup/models"
 	"github.com/hpcloud/cf-plugin-backup/util"
@@ -32,6 +38,33 @@ type Space struct {
 	OrganizationGuid string `json:"organization_guid"`
 }
 
+type App struct {
+	Name               string      `json:"name"`
+	SpaceGuid          string      `json:"space_guid"`
+	Diego              interface{} `json:"diego"`
+	Ports              interface{} `json:"ports"`
+	Memory             interface{} `json:"memory"`
+	Instances          interface{} `json:"instances"`
+	DiskQuota          interface{} `json:"disk_quota"`
+	StackGuid          string      `json:"stack_guid"`
+	Command            interface{} `json:"command"`
+	Buildpack          interface{} `json:"buildpack"`
+	HealthCheckType    interface{} `json:"health_check_type"`
+	HealthCheckTimeout interface{} `json:"health_check_timeout"`
+	EnableSSH          interface{} `json:"enable_ssh"`
+	DockerImage        interface{} `json:"docker_image"`
+	EnvironmentJson    interface{} `json:"environment_json"`
+	State              interface{} `json:"state"`
+}
+
+type Route struct {
+	DomainGuid string      `json:"domain_guid"`
+	SpaceGuid  string      `json:"space_guid"`
+	Port       interface{} `json:"port"`
+	Host       interface{} `json:"host"`
+	Path       interface{} `json:"path"`
+}
+
 func showInfo(sMessage string) {
 	fmt.Println(sMessage)
 }
@@ -40,8 +73,8 @@ func showWarning(sMessage string) {
 	fmt.Printf("WARNING: %s\n", sMessage)
 }
 
-func restoreUser(user, space, role string) string {
-	showInfo(fmt.Sprintf("Restaurating User: %s", user))
+func restoreUserRole(user, space, role string) {
+	showInfo(fmt.Sprintf("Restoring role for User: %s", user))
 
 	user_id := getUserId(user)
 	if user_id == "" {
@@ -54,9 +87,8 @@ func restoreUser(user, space, role string) string {
 			showWarning(fmt.Sprintf("Could not create user association %s, exception message: %s",
 				user, err.Error()))
 		}
-		return showResult(resp, "user", user, false)
+		showResult(resp, "user", "", "", false)
 	}
-	return ""
 }
 
 func getUserId(user string) string {
@@ -82,7 +114,22 @@ func restoreOrg(org Org) string {
 		showWarning(fmt.Sprintf("Could not create org %s, exception message: %s",
 			org.Name, err.Error()))
 	}
-	return showOrgResult(resp, org)
+	return showResult(resp, "org", "name", org.Name, true)
+}
+
+func restoreApp(app App) string {
+	showInfo(fmt.Sprintf("Restoring App: %s", app.Name))
+	oJson, err := json.Marshal(app)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/apps", "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create app %s, exception message: %s",
+			app.Name, err.Error()))
+	}
+	return showResult(resp, "app", "name", app.Name, true)
 }
 
 func restoreSpace(space Space) string {
@@ -97,109 +144,39 @@ func restoreSpace(space Space) string {
 		showWarning(fmt.Sprintf("Could not create space %s, exception message: %s",
 			space.Name, err.Error()))
 	}
-	return showSpaceResult(resp, space)
+	return showResult(resp, "space", "name", space.Name, true)
 }
 
-func showSpaceResult(resp []string, space Space) string {
-	oResp := make(map[string]interface{})
-	if len(resp) == 0 {
-		showWarning(fmt.Sprintf("Got null response while restoring space %s",
-			space.Name))
-		return ""
-	}
-	err := json.Unmarshal([]byte(resp[0]), &oResp)
-	if err != nil {
-		showWarning(fmt.Sprintf("Got unknow response while restoring space %s: %s",
-			space.Name, err.Error()))
-		return ""
-	}
-	if oResp["error_code"] != nil {
-		showWarning(fmt.Sprintf("got %v-%v while restoring space %s",
-			oResp["error_code"], oResp["description"], space.Name))
-		return ""
-	}
-
-	if oResp["entity"] != nil {
-		inName := (oResp["entity"].(map[string]interface{}))["name"].(string)
-		if inName == space.Name {
-			showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
-		} else {
-			showWarning(fmt.Sprintf("Name %s does not match reqyested name %s",
-				oResp["name"], space.Name))
-		}
-
-		return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
-	} else {
-		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
-		return ""
-	}
-}
-
-func showOrgResult(resp []string, org Org) string {
-	oResp := make(map[string]interface{})
-	if len(resp) == 0 {
-		showWarning(fmt.Sprintf("Got null response while restoring org %s",
-			org.Name))
-		return ""
-	}
-	err := json.Unmarshal([]byte(resp[0]), &oResp)
-	if err != nil {
-		showWarning(fmt.Sprintf("Got unknow response while restoring org %s: %s",
-			org.Name, err.Error()))
-		return ""
-	}
-	if oResp["error_code"] != nil {
-		showWarning(fmt.Sprintf("got %v-%v while restoring org %s",
-			oResp["error_code"], oResp["description"], org.Name))
-		return ""
-	}
-
-	if oResp["entity"] != nil {
-		inName := oResp["entity"].(map[string]interface{})["name"].(string)
-		if inName == org.Name {
-			showInfo(fmt.Sprintf("Succesfully restored org %s", org.Name))
-		} else {
-			showWarning(fmt.Sprintf("Name %s does not match reqyested name %s",
-				oResp["name"], org.Name))
-		}
-
-		return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
-	} else {
-		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
-		return ""
-	}
-}
-
-func showResult(resp []string, entity, name string, checkName bool) string {
+func showResult(resp []string, entity, checkField, expectedValue string, check bool) string {
 	oResp := make(map[string]interface{})
 	if len(resp) == 0 {
 		showWarning(fmt.Sprintf("Got null response while restoring %s %s",
-			entity, name))
+			entity, expectedValue))
 		return ""
 	}
 	err := json.Unmarshal([]byte(resp[0]), &oResp)
 	if err != nil {
 		showWarning(fmt.Sprintf("Got unknow response while restoring %s %s: %s",
-			entity, name, err.Error()))
+			entity, expectedValue, err.Error()))
 		return ""
 	}
 	if oResp["error_code"] != nil {
 		showWarning(fmt.Sprintf("got %v-%v while restoring %s %s",
-			oResp["error_code"], oResp["description"], entity, name))
+			oResp["error_code"], oResp["description"], entity, expectedValue))
 		return ""
 	}
 
-	if checkName {
+	if check {
 		if oResp["entity"] != nil {
-			inName := (oResp["entity"].(map[string]interface{}))["name"].(string)
-			if inName == name {
-				showInfo(fmt.Sprintf("Succesfully restored %s %s", entity, name))
+			inName := (oResp["entity"].(map[string]interface{}))[checkField].(string)
+			if inName == expectedValue {
+				showInfo(fmt.Sprintf("Succesfully restored %s %s", entity, expectedValue))
 				if oResp["metadata"] != nil {
 					return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
 				}
 			} else {
-				showWarning(fmt.Sprintf("Name %s does not match requested name %s",
-					oResp["name"], name))
+				showWarning(fmt.Sprintf("Field %s does not match requested value %s",
+					oResp[checkField], expectedValue))
 				return ""
 			}
 		} else {
@@ -230,20 +207,20 @@ func restoreFromJSON() {
 		if org_guid != "" {
 			auditors := org.Entity["auditors"].(*[]*models.ResourceModel)
 			for _, auditor := range *auditors {
-				restoreUser(auditor.Entity["username"].(string), org_guid, ORG_DEV)
-				restoreUser(auditor.Entity["username"].(string), org_guid, ORG_AUDIT)
+				restoreUserRole(auditor.Entity["username"].(string), org_guid, ORG_DEV)
+				restoreUserRole(auditor.Entity["username"].(string), org_guid, ORG_AUDIT)
 			}
 
 			billing_managers := org.Entity["billing_managers"].(*[]*models.ResourceModel)
 			for _, manager := range *billing_managers {
-				restoreUser(manager.Entity["username"].(string), org_guid, ORG_DEV)
-				restoreUser(manager.Entity["username"].(string), org_guid, ORG_BILLING)
+				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_DEV)
+				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_BILLING)
 			}
 
 			managers := org.Entity["managers"].(*[]*models.ResourceModel)
 			for _, manager := range *managers {
-				restoreUser(manager.Entity["username"].(string), org_guid, ORG_DEV)
-				restoreUser(manager.Entity["username"].(string), org_guid, ORG_MANAGER)
+				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_DEV)
+				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_MANAGER)
 			}
 
 			spaces := org.Entity["spaces"].(*[]*models.ResourceModel)
@@ -254,23 +231,208 @@ func restoreFromJSON() {
 				if space_guid != "" {
 					auditors := space.Entity["auditors"].(*[]*models.ResourceModel)
 					for _, auditor := range *auditors {
-						restoreUser(auditor.Entity["username"].(string), space_guid, SPACE_AUDIT)
+						restoreUserRole(auditor.Entity["username"].(string), space_guid, SPACE_AUDIT)
 					}
 
 					developers := space.Entity["developers"].(*[]*models.ResourceModel)
 					for _, developer := range *developers {
-						restoreUser(developer.Entity["username"].(string), space_guid, SPACE_DEV)
+						restoreUserRole(developer.Entity["username"].(string), space_guid, SPACE_DEV)
 					}
 
 					managers := space.Entity["managers"].(*[]*models.ResourceModel)
 					for _, manager := range *managers {
-						restoreUser(manager.Entity["username"].(string), space_guid, SPACE_MANAGER)
+						restoreUserRole(manager.Entity["username"].(string), space_guid, SPACE_MANAGER)
+					}
+				}
+
+				apps := space.Entity["apps"].(*[]*models.ResourceModel)
+				for _, app := range *apps {
+					stackName := app.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
+					stackGuid := getStackGuid(stackName)
+					if stackGuid == "" {
+						showWarning(fmt.Sprintln("Stack %s not found. Skipping app %s", stackName, app.Entity["name"].(string)))
+						continue
+					}
+
+					a := App{
+						Name:               app.Entity["name"].(string),
+						SpaceGuid:          space_guid,
+						Diego:              app.Entity["diego"],
+						Memory:             app.Entity["memory"],
+						Instances:          app.Entity["instances"],
+						DiskQuota:          app.Entity["disk_quota"],
+						StackGuid:          stackGuid,
+						Command:            app.Entity["command"],
+						Buildpack:          app.Entity["buildpack"],
+						HealthCheckType:    app.Entity["health_check_type"],
+						HealthCheckTimeout: app.Entity["health_check_timeout"],
+						EnableSSH:          app.Entity["enable_ssh"],
+						DockerImage:        app.Entity["docker_image"],
+						EnvironmentJson:    app.Entity["environment_json"],
+						Ports:              app.Entity["ports"],
+					}
+
+					appGuid := restoreApp(a)
+					oldAppGuid := app.Metadata["guid"].(string)
+					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, oldAppGuid+".zip")
+					err = uploadApp(appZipPath, appGuid)
+					if err != nil {
+						showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", app.Entity["name"].(string), err.Error()))
+					}
+					state := app.Entity["state"].(string)
+					a.State = state
+					updateApp(appGuid, a)
+
+					routes := app.Entity["routes"].(*[]*models.ResourceModel)
+					for _, route := range *routes {
+						domain := route.Entity["domain"].(*models.ResourceModel)
+						domainName := domain.Entity["name"].(string)
+						domainGuid := getSharedDomainGuid(domainName)
+						if domainGuid == "" {
+							showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
+							continue
+						}
+
+						r := Route{
+							DomainGuid: domainGuid,
+							SpaceGuid:  space_guid,
+							Port:       route.Entity["port"],
+							Path:       route.Entity["path"],
+							Host:       route.Entity["host"],
+						}
+
+						routeGuid := createRoute(r)
+						bindRoute(appGuid, routeGuid)
 					}
 				}
 			}
-
 		}
 	}
+}
+
+func bindRoute(appGuid, routeGuid string) string {
+	showInfo(fmt.Sprintf("Binding route %s to app %s", routeGuid, appGuid))
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/apps/"+appGuid+"/routes/"+routeGuid, "-H", "Content-Type: application/x-www-form-urlencoded",
+		"-X", "PUT")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not bind route %s, exception message: %s",
+			routeGuid, err.Error()))
+	}
+	return showResult(resp, "route binding", "", "", false)
+}
+
+func createRoute(route Route) string {
+	showInfo(fmt.Sprintf("Creating route: %s", route.Host))
+	oJson, err := json.Marshal(route)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/routes", "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create route %s, exception message: %s",
+			route.Host, err.Error()))
+	}
+	return showResult(resp, "route", "host", route.Host.(string), true)
+}
+
+func getSharedDomainGuid(domainName string) string {
+	resources := util.GetResources(CliConnection, "/v2/shared_domains?q=name:"+domainName, 1)
+	for _, u := range *resources {
+		if u.Entity["name"].(string) == domainName {
+			return u.Metadata["guid"].(string)
+		}
+	}
+
+	return ""
+}
+
+func getStackGuid(stackName string) string {
+	resources := util.GetResources(CliConnection, "/v2/stacks?q=name:"+stackName, 1)
+	for _, u := range *resources {
+		if u.Entity["name"].(string) == stackName {
+			return u.Metadata["guid"].(string)
+		}
+	}
+
+	return ""
+}
+
+func uploadApp(appZipPath, appGuid string) error {
+
+	file, err := os.Open(appZipPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	writer.WriteField("resources", "[]")
+	part, err := writer.CreateFormFile("application", filepath.Base(appZipPath))
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(part, file)
+
+	err = writer.Close()
+	if err != nil {
+		return err
+	}
+
+	endpoint, err := CliConnection.ApiEndpoint()
+	if err != nil {
+		return err
+	}
+
+	uri := fmt.Sprintf("%s/v2/apps/%s/bits", endpoint, appGuid)
+
+	request, err := http.NewRequest("PUT", uri, body)
+	if err != nil {
+		return err
+	}
+
+	token, err := CliConnection.AccessToken()
+	if err != nil {
+		return err
+	}
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	request.Header.Add("Authorization", token)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	resp, err := client.Do(request)
+
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not upload file %s, exception message: %s",
+			appZipPath, err.Error()))
+	} else {
+		if resp.StatusCode != http.StatusCreated {
+			showWarning(fmt.Sprintf("Received %d while uploading file for app %s", resp.StatusCode, appGuid))
+		}
+	}
+
+	return nil
+}
+
+func updateApp(guid string, app App) {
+	showInfo(fmt.Sprintf("Updating app %s", app.Name))
+	oJson, err := json.Marshal(app)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/apps/"+guid, "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "PUT")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not update app %s, exception message: %s",
+			app.Name, err.Error()))
+	}
+	showResult(resp, "app", "name", app.Name, true)
 }
 
 // restoreCmd represents the restore command
