@@ -11,6 +11,7 @@ import (
 
 	"github.com/hpcloud/cf-plugin-backup/models"
 	"github.com/hpcloud/cf-plugin-backup/util"
+	"github.com/hpcloud/termui/termprogressbar"
 )
 
 // snapshotCmd represents the snapshot command
@@ -20,15 +21,18 @@ var snapshotCmd = &cobra.Command{
 	Long: `Create a new CloudFoundry backup snapshot to a local file.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
+		var countApps int
+		var currentIndex int
+
 		backupResources, err := util.GetOrgsResourcesRecurively(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
-
+		log.Println("orgs done")
 		sharedDomains, err := util.GetSharedDomains(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
-
+		log.Println("shared domains done")
 		securityGroups, err := util.GetSecurityGroups(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
-
+		log.Println("groups done")
 		backupJson, err := util.CreateBackupJSON(models.BackupModel{
 			Organizations:  backupResources,
 			SharedDomains:  sharedDomains,
@@ -59,10 +63,26 @@ var snapshotCmd = &cobra.Command{
 		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
 		for _, org := range *resources {
 			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
+				for _, _ = range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
+					countApps++
+				}
+			}
+		}
+
+		log.Printf("Backing up %d apps", countApps)
+
+		termuiPGBar := termuiprogressbar.NewProgressBar(countApps, true)
+		termuiPGBar.Start()
+
+		for _, org := range *resources {
+			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
 				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
 					appGuid := app.Metadata["guid"].(string)
-					log.Println("Saving bits for application", app.Entity["name"], appGuid)
-
+					//log.Println("Saving bits for application", app.Entity["name"], appGuid)
+					if currentIndex < countApps {
+						termuiPGBar.Increment()
+						currentIndex++
+					}
 					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
 					err := appBits.SaveDroplet(appGuid, appZipPath)
 					if err != nil {
@@ -71,6 +91,7 @@ var snapshotCmd = &cobra.Command{
 				}
 			}
 		}
+		termuiPGBar.FinishPrint("Apps backed up")
 	},
 }
 

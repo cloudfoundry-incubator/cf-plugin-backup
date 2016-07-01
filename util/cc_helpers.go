@@ -58,7 +58,7 @@ func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, 
 	if cacheResult, cacheHit := ccResources.jsonRetriveCache[url]; cacheHit {
 		result = cacheResult
 	} else {
-		log.Println("Retrinving resource", url)
+		log.Println("Retrieving resource", url)
 
 		output, err := ccResources.ccApi.InvokeGet(url)
 		if err != nil {
@@ -187,9 +187,9 @@ func (ccResources *CCResources) GetGenericResource(startUrl string, relationsDep
 				for entityKey, entityValue := range resource.Entity {
 					if strings.HasSuffix(entityKey, UrlSuffix) {
 						childEntity := strings.TrimSuffix(entityKey, UrlSuffix)
-						childURL := entityValue.(string)
 
 						if ccResources.follow == nil || ccResources.follow(childEntity) {
+							childURL := entityValue.(string)
 							childResource, err := ccResources.retriveParsedGenericResource(childURL)
 							FreakOut(err)
 
@@ -326,9 +326,6 @@ func CreateOrgCCResources(ccApi CCApi) *CCResources {
 
 		"apps",
 		"app",
-
-		"service_instances",
-		"service_instance",
 
 		"routes",
 		"route",
