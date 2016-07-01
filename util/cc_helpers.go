@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"container/list"
 	"encoding/json"
 	"log"
@@ -29,7 +30,13 @@ type CliConnectionCCApi struct {
 
 func (ccApi *CliConnectionCCApi) InvokeGet(path string) (string, error) {
 	output, err := ccApi.CliConnection.CliCommandWithoutTerminalOutput("curl", path, "-X", "GET")
-	return output[0], err
+	var buffer bytes.Buffer
+
+	for _, line := range output {
+		buffer.WriteString(line)
+	}
+
+	return buffer.String(), err
 }
 
 type CCResources struct {
