@@ -2,6 +2,9 @@
 	"ImportPath": "github.com/hpcloud/cf-plugin-backup",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v74",
+	"Packages": [
+		"./..."
+	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/BurntSushi/toml",
@@ -12,6 +15,11 @@
 			"ImportPath": "github.com/blang/semver",
 			"Comment": "v3.1.0",
 			"Rev": "aea32c919a18e5ef4537bbd283ff29594b1b0165"
+		},
+		{
+			"ImportPath": "github.com/cheggaaa/pb",
+			"Comment": "v1.0.3-1-gc1f48d5",
+			"Rev": "c1f48d5ce4f292dfb775ef52aaedd15be323510d"
 		},
 		{
 			"ImportPath": "github.com/cloudfoundry/cli/cf",
@@ -122,6 +130,22 @@
 		{
 			"ImportPath": "github.com/hashicorp/hcl/json/token",
 			"Rev": "d7400db7143f8e869812e50a53acd6c8d92af3b8"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/termui",
+			"Rev": "d83e24e96f77fead38e0c9ae250d81aa8800be57"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/termui/sigint",
+			"Rev": "d83e24e96f77fead38e0c9ae250d81aa8800be57"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/termui/termpassword",
+			"Rev": "d83e24e96f77fead38e0c9ae250d81aa8800be57"
+		},
+		{
+			"ImportPath": "github.com/hpcloud/termui/termprogressbar",
+			"Rev": "d83e24e96f77fead38e0c9ae250d81aa8800be57"
 		},
 		{
 			"ImportPath": "github.com/inconshreveable/mousetrap",
