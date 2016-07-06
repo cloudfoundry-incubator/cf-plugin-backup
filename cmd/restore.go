@@ -154,7 +154,7 @@ func showResult(resp []string, entity, checkField, expectedValue string, check b
 			entity, expectedValue))
 		return ""
 	}
-	err := json.Unmarshal([]byte(resp[0]), &oResp)
+	err := json.Unmarshal([]byte(util.ConcatStringArray(resp)), &oResp)
 	if err != nil {
 		showWarning(fmt.Sprintf("Got unknown response while restoring %s %s: %s",
 			entity, expectedValue, err.Error()))
