@@ -83,7 +83,12 @@ func restoreUserRole(user, space, role string) {
 			showWarning(fmt.Sprintf("Could not create user association %s, exception message: %s",
 				user, err.Error()))
 		}
-		showResult(resp, "user", "", "", false)
+		_, err = getResult(resp, "", "")
+		if err != nil {
+			showWarning(fmt.Sprintf("Error restoring user role %s for user %s: %s", role, user, err.Error()))
+		} else {
+			showInfo(fmt.Sprintf("Succesfully restored user role %s for user %s", role, user))
+		}
 	}
 }
 
@@ -99,7 +104,7 @@ func getUserId(user string) string {
 }
 
 func restoreOrg(org Org) string {
-	showInfo(fmt.Sprintf("Restoring Organization: %s", org.Name))
+	showInfo(fmt.Sprintf("Restoring organization: %s", org.Name))
 	oJson, err := json.Marshal(org)
 	util.FreakOut(err)
 
@@ -107,14 +112,19 @@ func restoreOrg(org Org) string {
 		"/v2/organizations", "-H", "Content-Type: application/json",
 		"-d", string(oJson), "-X", "POST")
 	if err != nil {
-		showWarning(fmt.Sprintf("Could not create org %s, exception message: %s",
+		showWarning(fmt.Sprintf("Could not create organization %s, exception message: %s",
 			org.Name, err.Error()))
 	}
-	return showResult(resp, "org", "name", org.Name, true)
+	result, err := getResult(resp, "name", org.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring organization %s: %s", org.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored organization %s", org.Name))
+	}
+	return result
 }
 
 func restoreApp(app App) string {
-	showInfo(fmt.Sprintf("Restoring App: %s", app.Name))
 	oJson, err := json.Marshal(app)
 	util.FreakOut(err)
 
@@ -122,14 +132,20 @@ func restoreApp(app App) string {
 		"/v2/apps", "-H", "Content-Type: application/json",
 		"-d", string(oJson), "-X", "POST")
 	if err != nil {
-		showWarning(fmt.Sprintf("Could not create app %s, exception message: %s",
+		showWarning(fmt.Sprintf("Could not create application %s, exception message: %s",
 			app.Name, err.Error()))
 	}
-	return showResult(resp, "app", "name", app.Name, true)
+	result, err := getResult(resp, "name", app.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring application %s: %s", app.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored application %s", app.Name))
+	}
+	return result
 }
 
 func restoreSpace(space Space) string {
-	showInfo(fmt.Sprintf("Restaurating Space: %s", space.Name))
+	showInfo(fmt.Sprintf("Restoring space: %s", space.Name))
 	oJson, err := json.Marshal(space)
 	util.FreakOut(err)
 
@@ -140,48 +156,44 @@ func restoreSpace(space Space) string {
 		showWarning(fmt.Sprintf("Could not create space %s, exception message: %s",
 			space.Name, err.Error()))
 	}
-	return showResult(resp, "space", "name", space.Name, true)
+	result, err := getResult(resp, "name", space.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring space %s: %s", space.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
+	}
+	return result
 }
 
-func showResult(resp []string, entity, checkField, expectedValue string, check bool) string {
+func getResult(resp []string, checkField, expectedValue string) (string, error) {
 	oResp := make(map[string]interface{})
 	if len(resp) == 0 {
-		showWarning(fmt.Sprintf("Got null response while restoring %s %s",
-			entity, expectedValue))
-		return ""
+		return "", fmt.Errorf("Got null response")
 	}
 	err := json.Unmarshal([]byte(util.ConcatStringArray(resp)), &oResp)
 	if err != nil {
-		showWarning(fmt.Sprintf("Got unknown response while restoring %s %s: %s",
-			entity, expectedValue, err.Error()))
-		return ""
+		return "", err
 	}
 	if oResp["error_code"] != nil {
-		showWarning(fmt.Sprintf("got %v-%v while restoring %s %s",
-			oResp["error_code"], oResp["description"], entity, expectedValue))
-		return ""
+		return "", fmt.Errorf("Got %v-%v", oResp["error_code"], oResp["description"])
 	}
 
-	if check {
+	if checkField != "" {
 		if oResp["entity"] != nil {
 			inName := (oResp["entity"].(map[string]interface{}))[checkField].(string)
 			if inName == expectedValue {
-				showInfo(fmt.Sprintf("Succesfully restored %s %s", entity, expectedValue))
 				if oResp["metadata"] != nil {
-					return (oResp["metadata"].(map[string]interface{}))["guid"].(string)
+					return (oResp["metadata"].(map[string]interface{}))["guid"].(string), nil
 				}
 			} else {
-				showWarning(fmt.Sprintf("Field %s does not match requested value %s",
-					oResp[checkField], expectedValue))
-				return ""
+				return "", fmt.Errorf("Field %s does not match requested value %s", oResp[checkField], expectedValue)
 			}
 		} else {
-			showWarning(fmt.Sprintln("\tWarning unknown answer received"))
-			return ""
+			return "", fmt.Errorf("Warning unknown answer received")
 		}
 	}
 
-	return ""
+	return "", nil
 }
 
 func restoreFromJSON() {
@@ -249,6 +261,9 @@ func restoreFromJSON() {
 				}
 				appBits := util.NewCFDroplet(CliConnection, packager)
 
+				appsCount := len(*apps)
+				appIndex := 1
+
 				for _, app := range *apps {
 					stackName := app.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
 					stackGuid := getStackGuid(stackName)
@@ -274,6 +289,8 @@ func restoreFromJSON() {
 						EnvironmentJson:    app.Entity["environment_json"],
 						Ports:              app.Entity["ports"],
 					}
+
+					showInfo(fmt.Sprintf("Restoring App %s for space %s [%d/%d]", a.Name, space.Entity["name"].(string), appIndex, appsCount))
 
 					appGuid := restoreApp(a)
 
@@ -309,25 +326,33 @@ func restoreFromJSON() {
 						}
 
 						routeGuid := createRoute(r)
-						bindRoute(appGuid, routeGuid)
+						showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
+						err = bindRoute(appGuid, routeGuid)
+						if err != nil {
+							showWarning(fmt.Sprintf("Error binding route %s.%s to app %s: %s", r.Host, domainName, a.Name, err.Error()))
+						} else {
+							showInfo(fmt.Sprintf("Successfully bound route %s.%s to app %s", r.Host, domainName, a.Name))
+						}
 					}
+					appIndex++
 				}
 			}
 		}
 	}
 }
 
-func bindRoute(appGuid, routeGuid string) string {
-	showInfo(fmt.Sprintf("Binding route %s to app %s", routeGuid, appGuid))
-
+func bindRoute(appGuid, routeGuid string) error {
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/apps/"+appGuid+"/routes/"+routeGuid, "-H", "Content-Type: application/x-www-form-urlencoded",
 		"-X", "PUT")
 	if err != nil {
-		showWarning(fmt.Sprintf("Could not bind route %s, exception message: %s",
-			routeGuid, err.Error()))
+		return err
 	}
-	return showResult(resp, "route binding", "", "", false)
+	_, err = getResult(resp, "", "")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func createRoute(route Route) string {
@@ -342,7 +367,13 @@ func createRoute(route Route) string {
 		showWarning(fmt.Sprintf("Could not create route %s, exception message: %s",
 			route.Host, err.Error()))
 	}
-	return showResult(resp, "route", "host", route.Host.(string), true)
+	result, err := getResult(resp, "host", route.Host.(string))
+	if err != nil {
+		showWarning(fmt.Sprintf("Error creating route %s: %s", route.Host, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully created route %s", route.Host))
+	}
+	return result
 }
 
 func getSharedDomainGuid(domainName string) string {
@@ -379,7 +410,12 @@ func updateApp(guid string, app App) {
 		showWarning(fmt.Sprintf("Could not update app %s, exception message: %s",
 			app.Name, err.Error()))
 	}
-	showResult(resp, "app", "name", app.Name, true)
+	_, err = getResult(resp, "name", app.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error updating application %s: %s", app.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully updated application %s", app.Name))
+	}
 }
 
 // restoreCmd represents the restore command
