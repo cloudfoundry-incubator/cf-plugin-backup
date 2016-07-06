@@ -45,11 +45,12 @@ var snapshotCmd = &cobra.Command{
 
 		// Save app bits
 
-		downloader := &util.CFDownloader{
+		packager := &util.CFPackager{
 			Cli:    CliConnection,
 			Writer: new(util.CFFileWriter),
+			Reader: new(util.CFFileReader),
 		}
-		appBits := util.NewCFDroplet(CliConnection, downloader)
+		appBits := util.NewCFDroplet(CliConnection, packager)
 
 		backupModel := models.BackupModel{}
 		err = json.Unmarshal([]byte(backupJson), &backupModel)

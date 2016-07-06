@@ -1,14 +1,9 @@
 package cmd
 
 import (
-	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"mime/multipart"
-	"net/http"
 	"os"
 	"path/filepath"
 
@@ -246,6 +241,13 @@ func restoreFromJSON() {
 				}
 
 				apps := space.Entity["apps"].(*[]*models.ResourceModel)
+				packager := &util.CFPackager{
+					Cli:    CliConnection,
+					Writer: new(util.CFFileWriter),
+					Reader: new(util.CFFileReader),
+				}
+				appBits := util.NewCFDroplet(CliConnection, packager)
+
 				for _, app := range *apps {
 					stackName := app.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
 					stackGuid := getStackGuid(stackName)
@@ -275,7 +277,7 @@ func restoreFromJSON() {
 					appGuid := restoreApp(a)
 					oldAppGuid := app.Metadata["guid"].(string)
 					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, oldAppGuid+".zip")
-					err = uploadApp(appZipPath, appGuid)
+					err = appBits.UploadDroplet(appGuid, appZipPath)
 					if err != nil {
 						showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", app.Entity["name"].(string), err.Error()))
 					}
@@ -358,66 +360,6 @@ func getStackGuid(stackName string) string {
 	}
 
 	return ""
-}
-
-func uploadApp(appZipPath, appGuid string) error {
-
-	file, err := os.Open(appZipPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	writer.WriteField("resources", "[]")
-	part, err := writer.CreateFormFile("application", filepath.Base(appZipPath))
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(part, file)
-
-	err = writer.Close()
-	if err != nil {
-		return err
-	}
-
-	endpoint, err := CliConnection.ApiEndpoint()
-	if err != nil {
-		return err
-	}
-
-	uri := fmt.Sprintf("%s/v2/apps/%s/bits", endpoint, appGuid)
-
-	request, err := http.NewRequest("PUT", uri, body)
-	if err != nil {
-		return err
-	}
-
-	token, err := CliConnection.AccessToken()
-	if err != nil {
-		return err
-	}
-	request.Header.Add("Content-Type", writer.FormDataContentType())
-	request.Header.Add("Authorization", token)
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-
-	resp, err := client.Do(request)
-
-	if err != nil {
-		showWarning(fmt.Sprintf("Could not upload file %s, exception message: %s",
-			appZipPath, err.Error()))
-	} else {
-		if resp.StatusCode != http.StatusCreated {
-			showWarning(fmt.Sprintf("Received %d while uploading file for app %s", resp.StatusCode, appGuid))
-		}
-	}
-
-	return nil
 }
 
 func updateApp(guid string, app App) {
