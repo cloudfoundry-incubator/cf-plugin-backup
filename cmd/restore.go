@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -61,11 +62,11 @@ type Route struct {
 }
 
 func showInfo(sMessage string) {
-	fmt.Println(sMessage)
+	log.Printf(sMessage)
 }
 
 func showWarning(sMessage string) {
-	fmt.Printf("WARNING: %s\n", sMessage)
+	log.Printf("WARNING: %s\n", sMessage)
 }
 
 func restoreUserRole(user, space, role string) {
