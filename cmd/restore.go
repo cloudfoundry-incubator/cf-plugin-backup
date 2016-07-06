@@ -276,12 +276,16 @@ func restoreFromJSON() {
 					}
 
 					appGuid := restoreApp(a)
-					oldAppGuid := app.Metadata["guid"].(string)
-					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, oldAppGuid+".zip")
-					err = appBits.UploadDroplet(appGuid, appZipPath)
-					if err != nil {
-						showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", app.Entity["name"].(string), err.Error()))
+
+					if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
+						oldAppGuid := app.Metadata["guid"].(string)
+						appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, oldAppGuid+".zip")
+						err = appBits.UploadDroplet(appGuid, appZipPath)
+						if err != nil {
+							showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", app.Entity["name"].(string), err.Error()))
+						}
 					}
+
 					state := app.Entity["state"].(string)
 					a.State = state
 					updateApp(appGuid, a)

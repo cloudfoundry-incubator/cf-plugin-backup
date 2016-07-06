@@ -21,7 +21,6 @@ var snapshotCmd = &cobra.Command{
 	Long: `Create a new CloudFoundry backup snapshot to a local file.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		var countApps int
 		var currentIndex int
 
 		backupResources, err := util.GetOrgsResourcesRecurively(&util.CliConnectionCCApi{CliConnection: CliConnection})
@@ -61,38 +60,37 @@ var snapshotCmd = &cobra.Command{
 			util.FreakOut(err)
 		}
 
+		var appsToBackup []*models.ResourceModel
+
 		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
 		for _, org := range *resources {
 			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
-				for _, _ = range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
-					countApps++
+				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
+					if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
+						appsToBackup = append(appsToBackup, app)
+					}
 				}
 			}
 		}
 
-		log.Printf("Backing up %d apps", countApps)
+		log.Printf("Saving bits for %d apps", len(appsToBackup))
 
-		termuiPGBar := termuiprogressbar.NewProgressBar(countApps, true)
+		termuiPGBar := termuiprogressbar.NewProgressBar(len(appsToBackup), true)
 		termuiPGBar.Start()
 
-		for _, org := range *resources {
-			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
-				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
-					appGuid := app.Metadata["guid"].(string)
-					//log.Println("Saving bits for application", app.Entity["name"], appGuid)
-					if currentIndex < countApps {
-						termuiPGBar.Increment()
-						currentIndex++
-					}
-					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
-					err := appBits.SaveDroplet(appGuid, appZipPath)
-					if err != nil {
-						log.Printf("Could not save bits for %v: %v", appGuid, err)
-					}
-				}
+		for _, app := range appsToBackup {
+			appGuid := app.Metadata["guid"].(string)
+			if currentIndex < len(appsToBackup) {
+				termuiPGBar.Increment()
+				currentIndex++
+			}
+			appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
+			err := appBits.SaveDroplet(appGuid, appZipPath)
+			if err != nil {
+				log.Printf("Could not save bits for %v: %v", appGuid, err)
 			}
 		}
-		termuiPGBar.FinishPrint("Apps backed up")
+		termuiPGBar.FinishPrint("App bits saved")
 	},
 }
 
