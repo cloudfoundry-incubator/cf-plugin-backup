@@ -67,6 +67,10 @@ type SecurityGroup struct {
 	SpaceGuids []string    `json:"space_guids"`
 }
 
+type SharedDomain struct {
+	Name string `json:"name"`
+}
+
 func showInfo(sMessage string) {
 	log.Printf(sMessage)
 }
@@ -202,6 +206,27 @@ func getResult(resp []string, checkField, expectedValue string) (string, error) 
 	return "", nil
 }
 
+func restoreSharedDomain(sharedDomain SharedDomain) (string, error) {
+	showInfo(fmt.Sprintf("Restoring shared domain: %s", sharedDomain.Name))
+	oJson, err := json.Marshal(sharedDomain)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/shared_domains", "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create shared domain %s, exception message: %s",
+			sharedDomain.Name, err.Error()))
+	}
+	result, err := getResult(resp, "name", sharedDomain.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring shared domain %s: %s", sharedDomain.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored shared domain %s", sharedDomain.Name))
+	}
+	return result, nil
+}
+
 func restoreFromJSON(includeSecurityGroups bool) {
 
 	//map["old_guid"] = "new_guid"
@@ -216,6 +241,14 @@ func restoreFromJSON(includeSecurityGroups bool) {
 
 	backupObject, err := util.ReadBackupJSON(fileContent)
 	util.FreakOut(err)
+
+	ccResources := util.CreateSharedDomainsCCResources(nil)
+	sharedDomains := ccResources.TransformToResourceModels(backupObject.SharedDomains)
+
+	for _, sd := range *sharedDomains {
+		sharedDomain := SharedDomain{Name: sd.Entity["name"].(string)}
+		restoreSharedDomain(sharedDomain)
+	}
 
 	orgs := util.RestoreOrgResourceModels(backupObject.Organizations)
 	for _, org := range *orgs {
@@ -245,7 +278,7 @@ func restoreFromJSON(includeSecurityGroups bool) {
 			for _, space := range *spaces {
 				s := Space{Name: space.Entity["name"].(string), OrganizationGuid: org_guid}
 				space_guid := restoreSpace(s)
-				spaceGuids[space.Entity["guid"].(string)] = space_guid
+				spaceGuids[space.Metadata["guid"].(string)] = space_guid
 
 				if space_guid != "" {
 					auditors := space.Entity["auditors"].(*[]*models.ResourceModel)
