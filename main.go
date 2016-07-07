@@ -97,7 +97,7 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 				Name:     "backup restore",
 				HelpText: "Restore a backup",
 				UsageDetails: plugin.Usage{
-					Usage: "cf backup restore",
+					Usage: "cf backup restore [--include-security-groups]",
 				},
 			},
 			plugin.Command{

@@ -61,6 +61,12 @@ type Route struct {
 	Path       interface{} `json:"path"`
 }
 
+type SecurityGroup struct {
+	Name       string      `json:"name"`
+	Rules      interface{} `json:"rules"`
+	SpaceGuids []string    `json:"space_guids"`
+}
+
 func showInfo(sMessage string) {
 	log.Printf(sMessage)
 }
@@ -196,7 +202,11 @@ func getResult(resp []string, checkField, expectedValue string) (string, error) 
 	return "", nil
 }
 
-func restoreFromJSON() {
+func restoreFromJSON(includeSecurityGroups bool) {
+
+	//map["old_guid"] = "new_guid"
+	spaceGuids := make(map[string]string)
+
 	var fileContent []byte
 	_, err := os.Stat(BackupFile)
 	util.FreakOut(err)
@@ -235,6 +245,7 @@ func restoreFromJSON() {
 			for _, space := range *spaces {
 				s := Space{Name: space.Entity["name"].(string), OrganizationGuid: org_guid}
 				space_guid := restoreSpace(s)
+				spaceGuids[space.Entity["guid"].(string)] = space_guid
 
 				if space_guid != "" {
 					auditors := space.Entity["auditors"].(*[]*models.ResourceModel)
@@ -339,6 +350,78 @@ func restoreFromJSON() {
 			}
 		}
 	}
+
+	if includeSecurityGroups {
+		ccResources := util.CreateSecurityGroupsCCResources(nil)
+		securityGroups := ccResources.TransformToResourceModels(backupObject.SecurityGroups)
+		for _, sg := range *securityGroups {
+			spaces := *sg.Entity["spaces"].(*[]*models.ResourceModel)
+			newSpaces := make([]string, len(spaces))
+			for i, s := range spaces {
+				newSpaces[i] = spaceGuids[(s.Metadata["guid"]).(string)]
+			}
+
+			g := SecurityGroup{
+				Name:       sg.Entity["name"].(string),
+				Rules:      sg.Entity["rules"],
+				SpaceGuids: newSpaces,
+			}
+
+			_, err = restoreSecurityGroup(g)
+			if err != nil {
+				showWarning(fmt.Sprintf("Error restoring security group %s: %s", g.Name, err.Error()))
+			}
+		}
+	}
+}
+
+func restoreSecurityGroup(securityGroup SecurityGroup) (string, error) {
+	showInfo(fmt.Sprintf("Restoring security group %s", securityGroup.Name))
+	resources := util.GetResources(CliConnection, "/v2/security_groups?q=name:"+securityGroup.Name, 1)
+	for _, u := range *resources {
+		if u.Entity["name"].(string) == securityGroup.Name {
+			showInfo(fmt.Sprintf("Deleting old security group %s", securityGroup.Name))
+			err := deleteSecurityGroup(u.Metadata["guid"].(string))
+			if err != nil {
+				return "", err
+			} else {
+				break
+			}
+		}
+	}
+	return createSecurityGroup(securityGroup)
+}
+
+func deleteSecurityGroup(guid string) error {
+	_, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/security_groups/"+guid, "-H", "Content-Type: application/x-www-form-urlencoded",
+		"-X", "DELETE")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createSecurityGroup(securityGroup SecurityGroup) (string, error) {
+	showInfo(fmt.Sprintf("Creating security group: %s", securityGroup.Name))
+	oJson, err := json.Marshal(securityGroup)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/security_groups", "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create security group %s, exception message: %s",
+			securityGroup.Name, err.Error()))
+	}
+	result, err := getResult(resp, "name", securityGroup.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring security group %s: %s", securityGroup.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored security group %s", securityGroup.Name))
+	}
+	return result, nil
 }
 
 func bindRoute(appGuid, routeGuid string) error {
@@ -425,11 +508,13 @@ var restoreCmd = &cobra.Command{
 	Long: `Restore the CloudFoundry state from a backup created with the snapshot command
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		restoreFromJSON()
+		includeSecurityGroups, _ := cmd.Flags().GetBool("include-security-groups")
+		restoreFromJSON(includeSecurityGroups)
 	},
 }
 
 func init() {
+	restoreCmd.Flags().Bool("include-security-groups", false, "Restore security groups")
 	RootCmd.AddCommand(restoreCmd)
 
 	// Here you will define your flags and configuration settings.
