@@ -71,12 +71,38 @@ type SharedDomain struct {
 	Name string `json:"name"`
 }
 
+type PrivateDomain struct {
+	Name                   string `json:"name"`
+	OwningOrganizationGuid string `json:"owning_organization_guid"`
+}
+
 func showInfo(sMessage string) {
 	log.Printf(sMessage)
 }
 
 func showWarning(sMessage string) {
 	log.Printf("WARNING: %s\n", sMessage)
+}
+
+func restorePrivateDomain(domain PrivateDomain) (string, error) {
+	showInfo(fmt.Sprintf("Restoring private domain: %s", domain.Name))
+	oJson, err := json.Marshal(domain)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/private_domains", "-H", "Content-Type: application/json",
+		"-d", string(oJson), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create private domain %s, exception message: %s",
+			domain.Name, err.Error()))
+	}
+	result, err := getResult(resp, "name", domain.Name)
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring private domain %s: %s", domain.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored private domain %s", domain.Name))
+	}
+	return result, nil
 }
 
 func restoreUserRole(user, space, role string) {
@@ -274,6 +300,12 @@ func restoreFromJSON(includeSecurityGroups bool) {
 				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_MANAGER)
 			}
 
+			privateDomains := org.Entity["private_domains"].(*[]*models.ResourceModel)
+			for _, privateDomain := range *privateDomains {
+				pd := PrivateDomain{Name: privateDomain.Entity["name"].(string), OwningOrganizationGuid: org_guid}
+				restorePrivateDomain(pd)
+			}
+
 			spaces := org.Entity["spaces"].(*[]*models.ResourceModel)
 			for _, space := range *spaces {
 				s := Space{Name: space.Entity["name"].(string), OrganizationGuid: org_guid}
@@ -354,21 +386,31 @@ func restoreFromJSON(includeSecurityGroups bool) {
 					routes := app.Entity["routes"].(*[]*models.ResourceModel)
 					for _, route := range *routes {
 						domain := route.Entity["domain"].(*models.ResourceModel)
-						domainName := domain.Entity["name"].(string)
-						domainGuid := getSharedDomainGuid(domainName)
-						if domainGuid == "" {
-							showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
-							continue
-						}
 
 						r := Route{
-							DomainGuid: domainGuid,
-							SpaceGuid:  space_guid,
-							Port:       route.Entity["port"],
-							Path:       route.Entity["path"],
-							Host:       route.Entity["host"],
+							SpaceGuid: space_guid,
+							Port:      route.Entity["port"],
+							Path:      route.Entity["path"],
+							Host:      route.Entity["host"],
 						}
 
+						domainName := domain.Entity["name"].(string)
+
+						if domain.Entity["owning_organization_guid"] == nil {
+							domainGuid := getSharedDomainGuid(domainName)
+							if domainGuid == "" {
+								showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
+								continue
+							}
+							r.DomainGuid = domainGuid
+						} else {
+							domainGuid := getPrivateDomainGuid(domainName)
+							if domainGuid == "" {
+								showWarning(fmt.Sprintf("Could not find private domain %s", domainName))
+								continue
+							}
+							r.DomainGuid = domainGuid
+						}
 						routeGuid := createRoute(r)
 						showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
 						err = bindRoute(appGuid, routeGuid)
@@ -494,6 +536,17 @@ func createRoute(route Route) string {
 
 func getSharedDomainGuid(domainName string) string {
 	resources := util.GetResources(CliConnection, "/v2/shared_domains?q=name:"+domainName, 1)
+	for _, u := range *resources {
+		if u.Entity["name"].(string) == domainName {
+			return u.Metadata["guid"].(string)
+		}
+	}
+
+	return ""
+}
+
+func getPrivateDomainGuid(domainName string) string {
+	resources := util.GetResources(CliConnection, "/v2/private_domains?q=name:"+domainName, 1)
 	for _, u := range *resources {
 		if u.Entity["name"].(string) == domainName {
 			return u.Metadata["guid"].(string)
