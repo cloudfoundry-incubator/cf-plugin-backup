@@ -26,3 +26,6 @@ test:
 
 dist:  
 	${GIT_ROOT}/make/dist
+
+tools:
+	${GIT_ROOT}/make/tools
