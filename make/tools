@@ -16,3 +16,4 @@ go get -u github.com/golang/lint/golint
 	
 #Tools for the project
 go get -u github.com/axw/gocov/gocov
+go get -u github.com/AlekSi/gocov-xml
