@@ -1,0 +1,18 @@
+#!/bin/sh
+
+OSES="linux darwin"
+
+GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
+
+set -o errexit
+
+. make/include/colors.sh
+
+echo "${OK_COLOR}==> Installing tools${NO_COLOR}"
+#Great tools to have, and used in the build file
+go get -u golang.org/x/tools/cmd/goimports
+go get -u golang.org/x/tools/cmd/cover
+go get -u github.com/golang/lint/golint
+	
+#Tools for the project
+go get -u github.com/axw/gocov/gocov
