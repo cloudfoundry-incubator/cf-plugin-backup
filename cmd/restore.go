@@ -26,7 +26,7 @@ const (
 
 type Org struct {
 	Name      string `json:"name"`
-	QuotaGUID string `json:-`
+	QuotaGUID string `json:"quota_definition_guid"`
 }
 
 type Space struct {
@@ -344,7 +344,7 @@ func restoreFromJSON(includeSecurityGroups bool) {
 					stackName := app.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
 					stackGuid := getStackGuid(stackName)
 					if stackGuid == "" {
-						showWarning(fmt.Sprintln("Stack %s not found. Skipping app %s", stackName, app.Entity["name"].(string)))
+						showWarning(fmt.Sprintf("Stack %s not found. Skipping app %s", stackName, app.Entity["name"].(string)))
 						continue
 					}
 
