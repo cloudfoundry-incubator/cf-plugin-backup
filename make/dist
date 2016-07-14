@@ -10,5 +10,5 @@ set -o errexit
 
 echo "${OK_COLOR}==> Disting all${NO_COLOR}"; \
 for OS in ${OSES}; do \
-	cd build/${OS}-amd64/ 1> /dev/null; tar czf ../../cf-plugin-backup-${APP_VERSION}-${OS}-amd64.tgz ./; cd - 1> /dev/null; \
+	cd build/${OS}-amd64/ 1> /dev/null; tar czf ../../${APP_VERSION}-${OS}-amd64.tgz ./; cd - 1> /dev/null; \
 done; 

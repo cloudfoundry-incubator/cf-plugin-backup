@@ -15,65 +15,65 @@ import (
 )
 
 const (
-	ORG_AUDIT     = "audited_organizations"
-	ORG_BILLING   = "billing_managed_organizations"
-	ORG_MANAGER   = "managed_organizations"
-	ORG_DEV       = "organizations"
-	SPACE_AUDIT   = "audited_spaces"
-	SPACE_MANAGER = "managed_spaces"
-	SPACE_DEV     = "spaces"
+	orgAudit     = "audited_organizations"
+	orgBilling   = "billing_managed_organizations"
+	orgManager   = "managed_organizations"
+	orgDev       = "organizations"
+	spaceAudit   = "audited_spaces"
+	spaceManager = "managed_spaces"
+	spaceDev     = "spaces"
 )
 
-type Org struct {
+type org struct {
 	Name      string `json:"name"`
 	QuotaGUID string `json:"quota_definition_guid"`
 }
 
-type Space struct {
+type space struct {
 	Name             string `json:"name"`
-	OrganizationGuid string `json:"organization_guid"`
+	OrganizationGUID string `json:"organization_guid"`
 }
 
-type App struct {
+type app struct {
 	Name               string      `json:"name"`
-	SpaceGuid          string      `json:"space_guid"`
+	SpaceGUID          string      `json:"space_guid"`
 	Diego              interface{} `json:"diego"`
 	Ports              interface{} `json:"ports"`
 	Memory             interface{} `json:"memory"`
 	Instances          interface{} `json:"instances"`
 	DiskQuota          interface{} `json:"disk_quota"`
-	StackGuid          string      `json:"stack_guid"`
+	StackGUID          string      `json:"stack_guid"`
 	Command            interface{} `json:"command"`
 	Buildpack          interface{} `json:"buildpack"`
 	HealthCheckType    interface{} `json:"health_check_type"`
 	HealthCheckTimeout interface{} `json:"health_check_timeout"`
 	EnableSSH          interface{} `json:"enable_ssh"`
 	DockerImage        interface{} `json:"docker_image"`
-	EnvironmentJson    interface{} `json:"environment_json"`
+	EnvironmentJSON    interface{} `json:"environment_json"`
 	State              interface{} `json:"state"`
 }
 
-type Route struct {
-	DomainGuid string      `json:"domain_guid"`
-	SpaceGuid  string      `json:"space_guid"`
+type route struct {
+	DomainGUID string      `json:"domain_guid"`
+	SpaceGUID  string      `json:"space_guid"`
 	Port       interface{} `json:"port"`
 	Host       interface{} `json:"host"`
 	Path       interface{} `json:"path"`
 }
 
-type SecurityGroup struct {
+type securityGroup struct {
 	Name       string      `json:"name"`
 	Rules      interface{} `json:"rules"`
 	SpaceGuids []string    `json:"space_guids"`
 }
 
-type SharedDomain struct {
+type sharedDomain struct {
 	Name string `json:"name"`
 }
 
-type PrivateDomain struct {
+type privateDomain struct {
 	Name                   string `json:"name"`
-	OwningOrganizationGuid string `json:"owning_organization_guid"`
+	OwningOrganizationGUID string `json:"owning_organization_guid"`
 }
 
 func showInfo(sMessage string) {
@@ -84,14 +84,14 @@ func showWarning(sMessage string) {
 	log.Printf("WARNING: %s\n", sMessage)
 }
 
-func restorePrivateDomain(domain PrivateDomain) (string, error) {
+func restorePrivateDomain(domain privateDomain) (string, error) {
 	showInfo(fmt.Sprintf("Restoring private domain: %s", domain.Name))
-	oJson, err := json.Marshal(domain)
+	oJSON, err := json.Marshal(domain)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/private_domains", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create private domain %s, exception message: %s",
 			domain.Name, err.Error()))
@@ -108,11 +108,11 @@ func restorePrivateDomain(domain PrivateDomain) (string, error) {
 func restoreUserRole(user, space, role string) {
 	showInfo(fmt.Sprintf("Restoring role for User: %s", user))
 
-	user_id := getUserId(user)
-	if user_id == "" {
+	userID := getUserID(user)
+	if userID == "" {
 		showWarning(fmt.Sprintf("Could not find user: %s", user))
 	} else {
-		path := fmt.Sprintf("/v2/users/%s/%s/%s", user_id, role, space)
+		path := fmt.Sprintf("/v2/users/%s/%s/%s", userID, role, space)
 		resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 			path, "-X", "PUT")
 		if err != nil {
@@ -128,7 +128,7 @@ func restoreUserRole(user, space, role string) {
 	}
 }
 
-func getUserId(user string) string {
+func getUserID(user string) string {
 	resources := util.GetResources(CliConnection, "/v2/users", 1)
 	for _, u := range *resources {
 		if u.Entity["username"].(string) == user {
@@ -139,14 +139,14 @@ func getUserId(user string) string {
 	return ""
 }
 
-func restoreOrg(org Org) string {
+func restoreOrg(org org) string {
 	showInfo(fmt.Sprintf("Restoring organization: %s", org.Name))
-	oJson, err := json.Marshal(org)
+	oJSON, err := json.Marshal(org)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/organizations", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create organization %s, exception message: %s",
 			org.Name, err.Error()))
@@ -160,13 +160,13 @@ func restoreOrg(org Org) string {
 	return result
 }
 
-func restoreApp(app App) string {
-	oJson, err := json.Marshal(app)
+func restoreApp(app app) string {
+	oJSON, err := json.Marshal(app)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/apps", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create application %s, exception message: %s",
 			app.Name, err.Error()))
@@ -180,14 +180,14 @@ func restoreApp(app App) string {
 	return result
 }
 
-func restoreSpace(space Space) string {
+func restoreSpace(space space) string {
 	showInfo(fmt.Sprintf("Restoring space: %s", space.Name))
-	oJson, err := json.Marshal(space)
+	oJSON, err := json.Marshal(space)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/spaces", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create space %s, exception message: %s",
 			space.Name, err.Error()))
@@ -232,14 +232,14 @@ func getResult(resp []string, checkField, expectedValue string) (string, error) 
 	return "", nil
 }
 
-func restoreSharedDomain(sharedDomain SharedDomain) (string, error) {
+func restoreSharedDomain(sharedDomain sharedDomain) (string, error) {
 	showInfo(fmt.Sprintf("Restoring shared domain: %s", sharedDomain.Name))
-	oJson, err := json.Marshal(sharedDomain)
+	oJSON, err := json.Marshal(sharedDomain)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/shared_domains", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create shared domain %s, exception message: %s",
 			sharedDomain.Name, err.Error()))
@@ -259,10 +259,10 @@ func restoreFromJSON(includeSecurityGroups bool) {
 	spaceGuids := make(map[string]string)
 
 	var fileContent []byte
-	_, err := os.Stat(BackupFile)
+	_, err := os.Stat(backupFile)
 	util.FreakOut(err)
 
-	fileContent, err = ioutil.ReadFile(BackupFile)
+	fileContent, err = ioutil.ReadFile(backupFile)
 	util.FreakOut(err)
 
 	backupObject, err := util.ReadBackupJSON(fileContent)
@@ -272,64 +272,64 @@ func restoreFromJSON(includeSecurityGroups bool) {
 	sharedDomains := ccResources.TransformToResourceModels(backupObject.SharedDomains)
 
 	for _, sd := range *sharedDomains {
-		sharedDomain := SharedDomain{Name: sd.Entity["name"].(string)}
+		sharedDomain := sharedDomain{Name: sd.Entity["name"].(string)}
 		restoreSharedDomain(sharedDomain)
 	}
 
 	orgs := util.RestoreOrgResourceModels(backupObject.Organizations)
-	for _, org := range *orgs {
-		o := Org{Name: org.Entity["name"].(string), QuotaGUID: org.Entity["quota_definition_guid"].(string)}
-		org_guid := restoreOrg(o)
+	for _, organization := range *orgs {
+		o := org{Name: organization.Entity["name"].(string), QuotaGUID: organization.Entity["quota_definition_guid"].(string)}
+		orgGUID := restoreOrg(o)
 
-		if org_guid != "" {
-			auditors := org.Entity["auditors"].(*[]*models.ResourceModel)
+		if orgGUID != "" {
+			auditors := organization.Entity["auditors"].(*[]*models.ResourceModel)
 			for _, auditor := range *auditors {
-				restoreUserRole(auditor.Entity["username"].(string), org_guid, ORG_DEV)
-				restoreUserRole(auditor.Entity["username"].(string), org_guid, ORG_AUDIT)
+				restoreUserRole(auditor.Entity["username"].(string), orgGUID, orgDev)
+				restoreUserRole(auditor.Entity["username"].(string), orgGUID, orgAudit)
 			}
 
-			billing_managers := org.Entity["billing_managers"].(*[]*models.ResourceModel)
-			for _, manager := range *billing_managers {
-				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_DEV)
-				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_BILLING)
+			billingManagers := organization.Entity["billing_managers"].(*[]*models.ResourceModel)
+			for _, manager := range *billingManagers {
+				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgDev)
+				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgBilling)
 			}
 
-			managers := org.Entity["managers"].(*[]*models.ResourceModel)
+			managers := organization.Entity["managers"].(*[]*models.ResourceModel)
 			for _, manager := range *managers {
-				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_DEV)
-				restoreUserRole(manager.Entity["username"].(string), org_guid, ORG_MANAGER)
+				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgDev)
+				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgManager)
 			}
 
-			privateDomains := org.Entity["private_domains"].(*[]*models.ResourceModel)
-			for _, privateDomain := range *privateDomains {
-				pd := PrivateDomain{Name: privateDomain.Entity["name"].(string), OwningOrganizationGuid: org_guid}
+			privateDomains := organization.Entity["private_domains"].(*[]*models.ResourceModel)
+			for _, domain := range *privateDomains {
+				pd := privateDomain{Name: domain.Entity["name"].(string), OwningOrganizationGUID: orgGUID}
 				restorePrivateDomain(pd)
 			}
 
-			spaces := org.Entity["spaces"].(*[]*models.ResourceModel)
-			for _, space := range *spaces {
-				s := Space{Name: space.Entity["name"].(string), OrganizationGuid: org_guid}
-				space_guid := restoreSpace(s)
-				spaceGuids[space.Metadata["guid"].(string)] = space_guid
+			spaces := organization.Entity["spaces"].(*[]*models.ResourceModel)
+			for _, sp := range *spaces {
+				s := space{Name: sp.Entity["name"].(string), OrganizationGUID: orgGUID}
+				spaceGUID := restoreSpace(s)
+				spaceGuids[sp.Metadata["guid"].(string)] = spaceGUID
 
-				if space_guid != "" {
-					auditors := space.Entity["auditors"].(*[]*models.ResourceModel)
+				if spaceGUID != "" {
+					auditors := sp.Entity["auditors"].(*[]*models.ResourceModel)
 					for _, auditor := range *auditors {
-						restoreUserRole(auditor.Entity["username"].(string), space_guid, SPACE_AUDIT)
+						restoreUserRole(auditor.Entity["username"].(string), spaceGUID, spaceAudit)
 					}
 
-					developers := space.Entity["developers"].(*[]*models.ResourceModel)
+					developers := sp.Entity["developers"].(*[]*models.ResourceModel)
 					for _, developer := range *developers {
-						restoreUserRole(developer.Entity["username"].(string), space_guid, SPACE_DEV)
+						restoreUserRole(developer.Entity["username"].(string), spaceGUID, spaceDev)
 					}
 
-					managers := space.Entity["managers"].(*[]*models.ResourceModel)
+					managers := sp.Entity["managers"].(*[]*models.ResourceModel)
 					for _, manager := range *managers {
-						restoreUserRole(manager.Entity["username"].(string), space_guid, SPACE_MANAGER)
+						restoreUserRole(manager.Entity["username"].(string), spaceGUID, spaceManager)
 					}
 				}
 
-				apps := space.Entity["apps"].(*[]*models.ResourceModel)
+				apps := sp.Entity["apps"].(*[]*models.ResourceModel)
 				packager := &util.CFPackager{
 					Cli:    CliConnection,
 					Writer: new(util.CFFileWriter),
@@ -340,80 +340,80 @@ func restoreFromJSON(includeSecurityGroups bool) {
 				appsCount := len(*apps)
 				appIndex := 1
 
-				for _, app := range *apps {
-					stackName := app.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
-					stackGuid := getStackGuid(stackName)
-					if stackGuid == "" {
-						showWarning(fmt.Sprintf("Stack %s not found. Skipping app %s", stackName, app.Entity["name"].(string)))
+				for _, application := range *apps {
+					stackName := application.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
+					stackGUID := getStackGUID(stackName)
+					if stackGUID == "" {
+						showWarning(fmt.Sprintf("Stack %s not found. Skipping app %s", stackName, application.Entity["name"].(string)))
 						continue
 					}
 
-					a := App{
-						Name:               app.Entity["name"].(string),
-						SpaceGuid:          space_guid,
-						Diego:              app.Entity["diego"],
-						Memory:             app.Entity["memory"],
-						Instances:          app.Entity["instances"],
-						DiskQuota:          app.Entity["disk_quota"],
-						StackGuid:          stackGuid,
-						Command:            app.Entity["command"],
-						Buildpack:          app.Entity["buildpack"],
-						HealthCheckType:    app.Entity["health_check_type"],
-						HealthCheckTimeout: app.Entity["health_check_timeout"],
-						EnableSSH:          app.Entity["enable_ssh"],
-						DockerImage:        app.Entity["docker_image"],
-						EnvironmentJson:    app.Entity["environment_json"],
-						Ports:              app.Entity["ports"],
+					a := app{
+						Name:               application.Entity["name"].(string),
+						SpaceGUID:          spaceGUID,
+						Diego:              application.Entity["diego"],
+						Memory:             application.Entity["memory"],
+						Instances:          application.Entity["instances"],
+						DiskQuota:          application.Entity["disk_quota"],
+						StackGUID:          stackGUID,
+						Command:            application.Entity["command"],
+						Buildpack:          application.Entity["buildpack"],
+						HealthCheckType:    application.Entity["health_check_type"],
+						HealthCheckTimeout: application.Entity["health_check_timeout"],
+						EnableSSH:          application.Entity["enable_ssh"],
+						DockerImage:        application.Entity["docker_image"],
+						EnvironmentJSON:    application.Entity["environment_json"],
+						Ports:              application.Entity["ports"],
 					}
 
-					showInfo(fmt.Sprintf("Restoring App %s for space %s [%d/%d]", a.Name, space.Entity["name"].(string), appIndex, appsCount))
+					showInfo(fmt.Sprintf("Restoring App %s for space %s [%d/%d]", a.Name, sp.Entity["name"].(string), appIndex, appsCount))
 
-					appGuid := restoreApp(a)
+					appGUID := restoreApp(a)
 
-					if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
-						oldAppGuid := app.Metadata["guid"].(string)
-						appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, oldAppGuid+".zip")
-						err = appBits.UploadDroplet(appGuid, appZipPath)
+					if dockerImg, hit := application.Entity["docker_image"]; !hit || dockerImg == nil {
+						oldAppGUID := application.Metadata["guid"].(string)
+						appZipPath := filepath.Join(backupDir, backupAppBitsDir, oldAppGUID+".zip")
+						err = appBits.UploadDroplet(appGUID, appZipPath)
 						if err != nil {
-							showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", app.Entity["name"].(string), err.Error()))
+							showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", application.Entity["name"].(string), err.Error()))
 						}
 					}
 
-					state := app.Entity["state"].(string)
+					state := application.Entity["state"].(string)
 					a.State = state
-					updateApp(appGuid, a)
+					updateApp(appGUID, a)
 
-					routes := app.Entity["routes"].(*[]*models.ResourceModel)
-					for _, route := range *routes {
-						domain := route.Entity["domain"].(*models.ResourceModel)
+					routes := application.Entity["routes"].(*[]*models.ResourceModel)
+					for _, rt := range *routes {
+						domain := rt.Entity["domain"].(*models.ResourceModel)
 
-						r := Route{
-							SpaceGuid: space_guid,
-							Port:      route.Entity["port"],
-							Path:      route.Entity["path"],
-							Host:      route.Entity["host"],
+						r := route{
+							SpaceGUID: spaceGUID,
+							Port:      rt.Entity["port"],
+							Path:      rt.Entity["path"],
+							Host:      rt.Entity["host"],
 						}
 
 						domainName := domain.Entity["name"].(string)
 
 						if domain.Entity["owning_organization_guid"] == nil {
-							domainGuid := getSharedDomainGuid(domainName)
-							if domainGuid == "" {
+							domainGUID := getSharedDomainGUID(domainName)
+							if domainGUID == "" {
 								showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
 								continue
 							}
-							r.DomainGuid = domainGuid
+							r.DomainGUID = domainGUID
 						} else {
-							domainGuid := getPrivateDomainGuid(domainName)
-							if domainGuid == "" {
+							domainGUID := getPrivateDomainGUID(domainName)
+							if domainGUID == "" {
 								showWarning(fmt.Sprintf("Could not find private domain %s", domainName))
 								continue
 							}
-							r.DomainGuid = domainGuid
+							r.DomainGUID = domainGUID
 						}
-						routeGuid := createRoute(r)
+						routeGUID := createRoute(r)
 						showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
-						err = bindRoute(appGuid, routeGuid)
+						err = bindRoute(appGUID, routeGUID)
 						if err != nil {
 							showWarning(fmt.Sprintf("Error binding route %s.%s to app %s: %s", r.Host, domainName, a.Name, err.Error()))
 						} else {
@@ -436,7 +436,7 @@ func restoreFromJSON(includeSecurityGroups bool) {
 				newSpaces[i] = spaceGuids[(s.Metadata["guid"]).(string)]
 			}
 
-			g := SecurityGroup{
+			g := securityGroup{
 				Name:       sg.Entity["name"].(string),
 				Rules:      sg.Entity["rules"],
 				SpaceGuids: newSpaces,
@@ -450,7 +450,7 @@ func restoreFromJSON(includeSecurityGroups bool) {
 	}
 }
 
-func restoreSecurityGroup(securityGroup SecurityGroup) (string, error) {
+func restoreSecurityGroup(securityGroup securityGroup) (string, error) {
 	showInfo(fmt.Sprintf("Restoring security group %s", securityGroup.Name))
 	resources := util.GetResources(CliConnection, "/v2/security_groups?q=name:"+securityGroup.Name, 1)
 	for _, u := range *resources {
@@ -459,9 +459,8 @@ func restoreSecurityGroup(securityGroup SecurityGroup) (string, error) {
 			err := deleteSecurityGroup(u.Metadata["guid"].(string))
 			if err != nil {
 				return "", err
-			} else {
-				break
 			}
+			break
 		}
 	}
 	return createSecurityGroup(securityGroup)
@@ -478,14 +477,14 @@ func deleteSecurityGroup(guid string) error {
 	return nil
 }
 
-func createSecurityGroup(securityGroup SecurityGroup) (string, error) {
+func createSecurityGroup(securityGroup securityGroup) (string, error) {
 	showInfo(fmt.Sprintf("Creating security group: %s", securityGroup.Name))
-	oJson, err := json.Marshal(securityGroup)
+	oJSON, err := json.Marshal(securityGroup)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/security_groups", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create security group %s, exception message: %s",
 			securityGroup.Name, err.Error()))
@@ -499,9 +498,9 @@ func createSecurityGroup(securityGroup SecurityGroup) (string, error) {
 	return result, nil
 }
 
-func bindRoute(appGuid, routeGuid string) error {
+func bindRoute(appGUID, routeGUID string) error {
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
-		"/v2/apps/"+appGuid+"/routes/"+routeGuid, "-H", "Content-Type: application/x-www-form-urlencoded",
+		"/v2/apps/"+appGUID+"/routes/"+routeGUID, "-H", "Content-Type: application/x-www-form-urlencoded",
 		"-X", "PUT")
 	if err != nil {
 		return err
@@ -513,14 +512,14 @@ func bindRoute(appGuid, routeGuid string) error {
 	return nil
 }
 
-func createRoute(route Route) string {
+func createRoute(route route) string {
 	showInfo(fmt.Sprintf("Creating route: %s", route.Host))
-	oJson, err := json.Marshal(route)
+	oJSON, err := json.Marshal(route)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/routes", "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "POST")
+		"-d", string(oJSON), "-X", "POST")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not create route %s, exception message: %s",
 			route.Host, err.Error()))
@@ -534,7 +533,7 @@ func createRoute(route Route) string {
 	return result
 }
 
-func getSharedDomainGuid(domainName string) string {
+func getSharedDomainGUID(domainName string) string {
 	resources := util.GetResources(CliConnection, "/v2/shared_domains?q=name:"+domainName, 1)
 	for _, u := range *resources {
 		if u.Entity["name"].(string) == domainName {
@@ -545,7 +544,7 @@ func getSharedDomainGuid(domainName string) string {
 	return ""
 }
 
-func getPrivateDomainGuid(domainName string) string {
+func getPrivateDomainGUID(domainName string) string {
 	resources := util.GetResources(CliConnection, "/v2/private_domains?q=name:"+domainName, 1)
 	for _, u := range *resources {
 		if u.Entity["name"].(string) == domainName {
@@ -556,7 +555,7 @@ func getPrivateDomainGuid(domainName string) string {
 	return ""
 }
 
-func getStackGuid(stackName string) string {
+func getStackGUID(stackName string) string {
 	resources := util.GetResources(CliConnection, "/v2/stacks?q=name:"+stackName, 1)
 	for _, u := range *resources {
 		if u.Entity["name"].(string) == stackName {
@@ -567,14 +566,14 @@ func getStackGuid(stackName string) string {
 	return ""
 }
 
-func updateApp(guid string, app App) {
+func updateApp(guid string, app app) {
 	showInfo(fmt.Sprintf("Updating app %s", app.Name))
-	oJson, err := json.Marshal(app)
+	oJSON, err := json.Marshal(app)
 	util.FreakOut(err)
 
 	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/apps/"+guid, "-H", "Content-Type: application/json",
-		"-d", string(oJson), "-X", "PUT")
+		"-d", string(oJSON), "-X", "PUT")
 	if err != nil {
 		showWarning(fmt.Sprintf("Could not update app %s, exception message: %s",
 			app.Name, err.Error()))

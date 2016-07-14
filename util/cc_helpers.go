@@ -12,39 +12,44 @@ import (
 	"github.com/hpcloud/cf-plugin-backup/models"
 )
 
-const UrlSuffix string = "_url"
-const OrgsUrl = "/v2/organizations"
-const ShardDomainsUrl = "/v2/shared_domains"
-const SecurityGroupsUrl = "/v2/security_groups"
+const urlSuffix string = "_url"
 
-type FollowDecision func(childKey string) bool
+// OrgsURL represents the organizations url path
+const OrgsURL = "/v2/organizations"
+const shardDomainsURL = "/v2/shared_domains"
+const securityGroupsURL = "/v2/security_groups"
 
-type CCApi interface {
+type followDecision func(childKey string) bool
+
+type cCApi interface {
 	InvokeGet(path string) (string, error)
 }
 
+//CliConnectionCCApi represents the cf cli connection
 type CliConnectionCCApi struct {
 	CliConnection plugin.CliConnection
 }
 
-func (ccApi *CliConnectionCCApi) InvokeGet(path string) (string, error) {
-	output, err := ccApi.CliConnection.CliCommandWithoutTerminalOutput("curl", path, "-X", "GET")
+// InvokeGet invokes GET on a given path
+func (ccAPI *CliConnectionCCApi) InvokeGet(path string) (string, error) {
+	output, err := ccAPI.CliConnection.CliCommandWithoutTerminalOutput("curl", path, "-X", "GET")
 
 	return ConcatStringArray(output), err
 }
 
+// CCResources represents cc resources
 type CCResources struct {
-	ccApi CCApi
+	ccAPI cCApi
 
 	jsonRetriveCache map[string][]byte
 	transformCache   map[string]interface{}
 
-	follow FollowDecision
+	follow followDecision
 }
 
-func NewCCResources(ccApi CCApi, follow FollowDecision) *CCResources {
+func newCCResources(ccAPI cCApi, follow followDecision) *CCResources {
 	res := CCResources{}
-	res.ccApi = ccApi
+	res.ccAPI = ccAPI
 	res.follow = follow
 
 	res.jsonRetriveCache = make(map[string][]byte)
@@ -53,7 +58,7 @@ func NewCCResources(ccApi CCApi, follow FollowDecision) *CCResources {
 	return &res
 }
 
-func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, error) {
+func (ccResources *CCResources) retriveJSONGenericResource(url string) ([]byte, error) {
 	var result []byte
 
 	if cacheResult, cacheHit := ccResources.jsonRetriveCache[url]; cacheHit {
@@ -61,7 +66,7 @@ func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, 
 	} else {
 		log.Println("Retrieving resource", url)
 
-		output, err := ccResources.ccApi.InvokeGet(url)
+		output, err := ccResources.ccAPI.InvokeGet(url)
 		if err != nil {
 			return nil, err
 		}
@@ -75,10 +80,10 @@ func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, 
 
 		if _, isArray := parsedOutput["total_results"]; isArray {
 			nextURL := url
-			allResources := make([]interface{}, 0)
+			var allResources []interface{}
 
 			for nextURL != "" {
-				output, err := ccResources.ccApi.InvokeGet(nextURL)
+				output, err := ccResources.ccAPI.InvokeGet(nextURL)
 				if err != nil {
 					return nil, err
 				}
@@ -106,13 +111,13 @@ func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, 
 
 			for _, element := range allResources {
 				metadata := element.(map[string]interface{})["metadata"]
-				elementUrl := metadata.(map[string]interface{})["url"].(string)
+				elementURL := metadata.(map[string]interface{})["url"].(string)
 				jsonElement, err := json.Marshal(element)
 				if err != nil {
 					return nil, err
 				}
 
-				ccResources.jsonRetriveCache[elementUrl] = jsonElement
+				ccResources.jsonRetriveCache[elementURL] = jsonElement
 			}
 		}
 
@@ -129,7 +134,7 @@ func (ccResources *CCResources) retriveJsonGenericResource(url string) ([]byte, 
 }
 
 func (ccResources *CCResources) retriveParsedGenericResource(url string) (interface{}, error) {
-	jsonOutput, err := ccResources.retriveJsonGenericResource(url)
+	jsonOutput, err := ccResources.retriveJSONGenericResource(url)
 	if err != nil {
 		return nil, err
 	}
@@ -140,10 +145,9 @@ func (ccResources *CCResources) retriveParsedGenericResource(url string) (interf
 	if err == nil && collection.TotalPages > 0 {
 		if collection.Resources != nil {
 			return collection.Resources, nil
-		} else {
-			emptyResult := make([]*models.ResourceModel, 0)
-			return &emptyResult, nil
 		}
+		var emptyResult []*models.ResourceModel
+		return &emptyResult, nil
 	}
 
 	var singleValue *models.ResourceModel
@@ -160,8 +164,8 @@ type retriveQueueItem struct {
 	depth          int
 }
 
-func (ccResources *CCResources) GetGenericResource(startUrl string, relationsDepth int) interface{} {
-	startResource, err := ccResources.retriveParsedGenericResource(startUrl)
+func (ccResources *CCResources) getGenericResource(startURL string, relationsDepth int) interface{} {
+	startResource, err := ccResources.retriveParsedGenericResource(startURL)
 	FreakOut(err)
 
 	queue := list.New()
@@ -186,8 +190,8 @@ func (ccResources *CCResources) GetGenericResource(startUrl string, relationsDep
 				resource := queueElement.resourceTarget.(*models.ResourceModel)
 
 				for entityKey, entityValue := range resource.Entity {
-					if strings.HasSuffix(entityKey, UrlSuffix) {
-						childEntity := strings.TrimSuffix(entityKey, UrlSuffix)
+					if strings.HasSuffix(entityKey, urlSuffix) {
+						childEntity := strings.TrimSuffix(entityKey, urlSuffix)
 
 						if ccResources.follow == nil || ccResources.follow(childEntity) {
 							childURL := entityValue.(string)
@@ -209,32 +213,34 @@ func (ccResources *CCResources) GetGenericResource(startUrl string, relationsDep
 	return startResource
 }
 
+// GetResource gets a resource
 func (ccResources *CCResources) GetResource(url string, relationsDepth int) *models.ResourceModel {
-	res := ccResources.GetGenericResource(url, relationsDepth)
+	res := ccResources.getGenericResource(url, relationsDepth)
 	return res.(*models.ResourceModel)
 }
 
+// GetResources gets resources
 func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]*models.ResourceModel {
-	res := ccResources.GetGenericResource(url, relationsDepth)
+	res := ccResources.getGenericResource(url, relationsDepth)
 	return res.(*[]*models.ResourceModel)
 }
 
-func (ccResources *CCResources) RecreateLinkForEntity(resource *models.ResourceModel) {
+func (ccResources *CCResources) recreateLinkForEntity(resource *models.ResourceModel) {
 	for k, v := range resource.Entity {
-		if strings.HasSuffix(k, UrlSuffix) {
-			childURL, isValidUrlEntry := v.(string)
-			if !isValidUrlEntry && childURL != "" {
+		if strings.HasSuffix(k, urlSuffix) {
+			childURL, isValidURLEntry := v.(string)
+			if !isValidURLEntry && childURL != "" {
 				continue
 			}
 
-			childKey := strings.TrimSuffix(k, UrlSuffix)
+			childKey := strings.TrimSuffix(k, urlSuffix)
 
 			if !(ccResources.follow == nil || ccResources.follow(childKey)) {
 				continue
 			}
 
 			if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
-				childResource := ccResources.TransformToResourceModelGeneric(childEntity)
+				childResource := ccResources.transformToResourceModelGeneric(childEntity)
 
 				resource.Entity[childKey] = childResource
 
@@ -257,10 +263,10 @@ func (ccResources *CCResources) RecreateLinkForEntity(resource *models.ResourceM
 	}
 }
 
-func (ccResources *CCResources) TransformToResourceModelGeneric(r interface{}) interface{} {
+func (ccResources *CCResources) transformToResourceModelGeneric(r interface{}) interface{} {
 	switch r.(type) {
 	case map[string]interface{}:
-		return ccResources.TransformToResourceModel(r)
+		return ccResources.transformToResourceModel(r)
 	case []interface{}:
 		return ccResources.TransformToResourceModels(r)
 	}
@@ -268,7 +274,7 @@ func (ccResources *CCResources) TransformToResourceModelGeneric(r interface{}) i
 	panic("unknown resource type")
 }
 
-func (ccResources *CCResources) TransformToResourceModel(resource interface{}) *models.ResourceModel {
+func (ccResources *CCResources) transformToResourceModel(resource interface{}) *models.ResourceModel {
 	resourceModel := models.ResourceModel{}
 
 	resourceValue := resource.(map[string]interface{})
@@ -278,8 +284,8 @@ func (ccResources *CCResources) TransformToResourceModel(resource interface{}) *
 
 	// Cache handling
 
-	resourceUrl := resourceModel.Metadata["url"].(string)
-	if cacheEntry, hit := ccResources.transformCache[resourceUrl]; hit {
+	resourceURL := resourceModel.Metadata["url"].(string)
+	if cacheEntry, hit := ccResources.transformCache[resourceURL]; hit {
 		cacheEntryValue := cacheEntry.(*models.ResourceModel)
 
 		cacheEntryHasEntity := cacheEntryValue.Entity != nil
@@ -290,32 +296,34 @@ func (ccResources *CCResources) TransformToResourceModel(resource interface{}) *
 			resourceModel.Entity = cacheEntryValue.Entity
 		}
 	} else {
-		ccResources.transformCache[resourceUrl] = &resourceModel
+		ccResources.transformCache[resourceURL] = &resourceModel
 	}
 
 	if hasEntity {
 		resourceModel.Entity = entity
-		ccResources.RecreateLinkForEntity(&resourceModel)
+		ccResources.recreateLinkForEntity(&resourceModel)
 	}
 
 	return &resourceModel
 }
 
+// TransformToResourceModels transforms interface to resource models
 func (ccResources *CCResources) TransformToResourceModels(resources interface{}) *[]*models.ResourceModel {
 	var result []*models.ResourceModel
 
 	resourceArray := resources.([]interface{})
 
 	for _, r := range resourceArray {
-		resourceModel := ccResources.TransformToResourceModel(r)
+		resourceModel := ccResources.transformToResourceModel(r)
 		result = append(result, resourceModel)
 	}
 
 	return &result
 }
 
-func CreateOrgCCResources(ccApi CCApi) *CCResources {
-	resourceUrlsWhitelistSlice := []interface{}{
+// CreateOrgCCResources creates org resource
+func CreateOrgCCResources(ccAPI cCApi) *CCResources {
+	resourceURLsWhitelistSlice := []interface{}{
 		"organizations",
 		"organization",
 		"auditors", "managers", "billing_managers",
@@ -338,62 +346,67 @@ func CreateOrgCCResources(ccApi CCApi) *CCResources {
 
 		"stack",
 	}
-	resourceUrlsWhitelist := mapset.NewSetFromSlice(resourceUrlsWhitelistSlice)
+	resourceURLsWhitelist := mapset.NewSetFromSlice(resourceURLsWhitelistSlice)
 
 	follow := func(childKey string) bool {
-		return resourceUrlsWhitelist.Contains(childKey)
+		return resourceURLsWhitelist.Contains(childKey)
 	}
 
-	ccResources := NewCCResources(ccApi, follow)
+	ccResources := newCCResources(ccAPI, follow)
 
 	return ccResources
 }
 
+// GetResources retrieves resources for a given url
 func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth int) *[]*models.ResourceModel {
 	follow := func(childKey string) bool {
 		return false
 	}
 
-	ccResources := NewCCResources(&CliConnectionCCApi{CliConnection: cliConnection}, follow)
+	ccResources := newCCResources(&CliConnectionCCApi{CliConnection: cliConnection}, follow)
 
 	resources := ccResources.GetResources(url, relationsDepth)
 
 	return resources
 }
 
-func GetOrgsResourcesRecurively(ccApi CCApi) (*[]*models.ResourceModel, error) {
-	ccResources := CreateOrgCCResources(ccApi)
-	resources := ccResources.GetResources(OrgsUrl, 5)
+// GetOrgsResourcesRecurively returns all orgs
+func GetOrgsResourcesRecurively(ccAPI cCApi) (*[]*models.ResourceModel, error) {
+	ccResources := CreateOrgCCResources(ccAPI)
+	resources := ccResources.GetResources(OrgsURL, 5)
 
 	return resources, nil
 }
 
-func CreateSharedDomainsCCResources(ccApi CCApi) *CCResources {
+// CreateSharedDomainsCCResources creates shared domains resources
+func CreateSharedDomainsCCResources(ccAPI cCApi) *CCResources {
 	follow := func(childKey string) bool {
 		return false
 	}
 
-	ccResources := NewCCResources(ccApi, follow)
+	ccResources := newCCResources(ccAPI, follow)
 
 	return ccResources
 }
 
-func CreateSecurityGroupsCCResources(ccApi CCApi) *CCResources {
-	resourceUrlsWhitelistSlice := []interface{}{
+// CreateSecurityGroupsCCResources creates security groups resources
+func CreateSecurityGroupsCCResources(ccAPI cCApi) *CCResources {
+	resourceURLsWhitelistSlice := []interface{}{
 		"spaces",
 		"organization",
 	}
-	resourceUrlsWhitelist := mapset.NewSetFromSlice(resourceUrlsWhitelistSlice)
+	resourceURLsWhitelist := mapset.NewSetFromSlice(resourceURLsWhitelistSlice)
 
 	follow := func(childKey string) bool {
-		return resourceUrlsWhitelist.Contains(childKey)
+		return resourceURLsWhitelist.Contains(childKey)
 	}
 
-	ccResources := NewCCResources(ccApi, follow)
+	ccResources := newCCResources(ccAPI, follow)
 
 	return ccResources
 }
 
+// RestoreOrgResourceModels gets orgs as resource models
 func RestoreOrgResourceModels(orgResources interface{}) *[]*models.ResourceModel {
 	ccResources := CreateOrgCCResources(nil)
 	transformedRes := ccResources.TransformToResourceModels(orgResources)
@@ -401,22 +414,25 @@ func RestoreOrgResourceModels(orgResources interface{}) *[]*models.ResourceModel
 	return transformedRes
 }
 
-func GetSharedDomains(ccApi CCApi) (interface{}, error) {
-	ccResources := CreateSharedDomainsCCResources(ccApi)
+// GetSharedDomains returns shared domains
+func GetSharedDomains(ccAPI cCApi) (interface{}, error) {
+	ccResources := CreateSharedDomainsCCResources(ccAPI)
 
-	resources := ccResources.GetResources(ShardDomainsUrl, 1)
-
-	return resources, nil
-}
-
-func GetSecurityGroups(ccApi CCApi) (interface{}, error) {
-	ccResources := CreateSecurityGroupsCCResources(ccApi)
-
-	resources := ccResources.GetResources(SecurityGroupsUrl, 2)
+	resources := ccResources.GetResources(shardDomainsURL, 1)
 
 	return resources, nil
 }
 
+// GetSecurityGroups return security groups
+func GetSecurityGroups(ccAPI cCApi) (interface{}, error) {
+	ccResources := CreateSecurityGroupsCCResources(ccAPI)
+
+	resources := ccResources.GetResources(securityGroupsURL, 2)
+
+	return resources, nil
+}
+
+// CreateBackupJSON creates backup json
 func CreateBackupJSON(backupModel models.BackupModel) (string, error) {
 	jsonResources, err := json.MarshalIndent(backupModel, "", " ")
 	if err != nil {
@@ -426,6 +442,7 @@ func CreateBackupJSON(backupModel models.BackupModel) (string, error) {
 	return string(jsonResources), nil
 }
 
+// ReadBackupJSON reads backup json
 func ReadBackupJSON(jsonBytes []byte) (*models.BackupModel, error) {
 	backupModel := models.BackupModel{}
 	err := json.Unmarshal([]byte(jsonBytes), &backupModel)

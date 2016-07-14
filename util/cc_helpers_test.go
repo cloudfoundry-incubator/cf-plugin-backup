@@ -165,7 +165,7 @@ func TestGetResources_RecurseWithLoops(t *testing.T) {
 	ccApi := CCApiMock{Responses: fakeRecursiveResponses}
 
 	ccResources := util.CreateOrgCCResources(&ccApi)
-	result := ccResources.GetResources(util.OrgsUrl, 10)
+	result := ccResources.GetResources(util.OrgsURL, 10)
 
 	if len(*result) != 1 {
 		t.Fatal("result is not of length 1")

@@ -32,14 +32,14 @@ var snapshotCmd = &cobra.Command{
 		securityGroups, err := util.GetSecurityGroups(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 		log.Println("groups done")
-		backupJson, err := util.CreateBackupJSON(models.BackupModel{
+		backupJSON, err := util.CreateBackupJSON(models.BackupModel{
 			Organizations:  backupResources,
 			SharedDomains:  sharedDomains,
 			SecurityGroups: securityGroups,
 		})
 		util.FreakOut(err)
 
-		err = ioutil.WriteFile(BackupFile, []byte(backupJson), 0644)
+		err = ioutil.WriteFile(backupFile, []byte(backupJSON), 0644)
 		util.FreakOut(err)
 
 		// Save app bits
@@ -52,10 +52,10 @@ var snapshotCmd = &cobra.Command{
 		appBits := util.NewCFDroplet(CliConnection, packager)
 
 		backupModel := models.BackupModel{}
-		err = json.Unmarshal([]byte(backupJson), &backupModel)
+		err = json.Unmarshal([]byte(backupJSON), &backupModel)
 		util.FreakOut(err)
 
-		err = os.Mkdir(filepath.Join(BackupDir, BackupAppBitsDir), 0755)
+		err = os.Mkdir(filepath.Join(backupDir, backupAppBitsDir), 0755)
 		if err != nil && !os.IsExist(err) {
 			util.FreakOut(err)
 		}
@@ -79,15 +79,15 @@ var snapshotCmd = &cobra.Command{
 		termuiPGBar.Start()
 
 		for _, app := range appsToBackup {
-			appGuid := app.Metadata["guid"].(string)
+			appGUID := app.Metadata["guid"].(string)
 			if currentIndex < len(appsToBackup) {
 				termuiPGBar.Increment()
 				currentIndex++
 			}
-			appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
-			err := appBits.SaveDroplet(appGuid, appZipPath)
+			appZipPath := filepath.Join(backupDir, backupAppBitsDir, appGUID+".zip")
+			err := appBits.SaveDroplet(appGUID, appZipPath)
 			if err != nil {
-				log.Printf("Could not save bits for %v: %v", appGuid, err)
+				log.Printf("Could not save bits for %v: %v", appGUID, err)
 			}
 		}
 		termuiPGBar.FinishPrint("App bits saved")

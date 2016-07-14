@@ -21,11 +21,11 @@ var infoCmd = &cobra.Command{
 It includes a summary of organizations, spaces and apps
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		backupJson, err := ioutil.ReadFile(BackupFile)
+		backupJSON, err := ioutil.ReadFile(backupFile)
 		util.FreakOut(err)
 
 		backupModel := models.BackupModel{}
-		err = json.Unmarshal(backupJson, &backupModel)
+		err = json.Unmarshal(backupJSON, &backupModel)
 		util.FreakOut(err)
 
 		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
@@ -36,8 +36,8 @@ It includes a summary of organizations, spaces and apps
 				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
 					fmt.Println("---", "App ", app.Entity["name"])
 
-					appGuid := app.Metadata["guid"].(string)
-					appZipPath := filepath.Join(BackupDir, BackupAppBitsDir, appGuid+".zip")
+					appGUID := app.Metadata["guid"].(string)
+					appZipPath := filepath.Join(backupDir, backupAppBitsDir, appGUID+".zip")
 					appZip, err := os.Open(appZipPath)
 					if err == nil {
 						zipStat, err := appZip.Stat()
