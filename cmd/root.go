@@ -17,12 +17,13 @@ var (
 	target     string
 	key        string
 
-	BackupDir        string
-	BackupAppBitsDir string
-	BackupFile       string
+	backupDir        string
+	backupAppBitsDir string
+	backupFile       string
 
+	//CliConnection represents the cf cli connection
 	CliConnection     plugin.CliConnection
-	BackupDestination string
+	backupDestination string
 )
 
 // RootCmd represents the base command when called without any subcommands
@@ -66,7 +67,7 @@ func initConfig() {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 
-	BackupDir = "./"
-	BackupAppBitsDir = "app-bits"
-	BackupFile = "cf-backup.json"
+	backupDir = "./"
+	backupAppBitsDir = "app-bits"
+	backupFile = "cf-backup.json"
 }

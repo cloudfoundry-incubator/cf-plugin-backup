@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 )
 
+// ConcatStringArray concatenates a string array
 func ConcatStringArray(lines []string) string {
 	var buffer bytes.Buffer
 
@@ -17,6 +18,7 @@ func ConcatStringArray(lines []string) string {
 	return buffer.String()
 }
 
+// FreakOut logs error and exits the program with exit code 1
 func FreakOut(err error) {
 	if err != nil {
 		fmt.Println("Error: ", err.Error())

@@ -23,7 +23,7 @@ type CFPackager struct {
 	Reader FileReader
 }
 
-//Downloader interaface for implementing downloaders.
+//Packager interaface for implementing downloaders.
 type Packager interface {
 	GetDroplet(guid string) ([]byte, error)
 	SaveDropletToFile(filePath string, data []byte) error
@@ -44,13 +44,16 @@ func (fw *CFFileWriter) WriteFile(filename string, data []byte, perm os.FileMode
 	return ioutil.WriteFile(filename, data, perm)
 }
 
+//FileReader test shim for reading a file.
 type FileReader interface {
 	ReadFile(filename string) ([]byte, error)
 }
 
+//CFFileReader is a wrapper for ioutil.ReadFile
 type CFFileReader struct {
 }
 
+//ReadFile reads a file
 func (fr *CFFileReader) ReadFile(filename string) ([]byte, error) {
 	return ioutil.ReadFile(filename)
 }
@@ -121,7 +124,7 @@ type Droplet interface {
 type CFDroplet struct {
 	Cli        plugin.CliConnection
 	Packager   Packager
-	HttpClient *http.Client
+	HTTPClient *http.Client
 }
 
 //NewCFDroplet builds a new CF droplet
@@ -146,10 +149,12 @@ func (d *CFDroplet) SaveDroplet(guid string, path string) error {
 	return nil
 }
 
+// UploadDroplet uploads an apps droplet
 func (d *CFDroplet) UploadDroplet(guid, path string) error {
 	return d.Packager.UploadDroplet(guid, path)
 }
 
+// UploadDroplet uploads an apps droplet
 func (packager *CFPackager) UploadDroplet(guid, path string) error {
 	token, err := packager.Cli.AccessToken()
 	if nil != err {
@@ -202,10 +207,9 @@ func (packager *CFPackager) UploadDroplet(guid, path string) error {
 
 	if err != nil {
 		return err
-	} else {
-		if resp.StatusCode != http.StatusCreated {
-			return fmt.Errorf("Received %d while uploading file for app %s", resp.StatusCode, guid)
-		}
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("Received %d while uploading file for app %s", resp.StatusCode, guid)
 	}
 
 	return nil
