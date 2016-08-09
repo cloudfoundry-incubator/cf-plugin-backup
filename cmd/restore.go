@@ -282,28 +282,36 @@ func restoreFromJSON(includeSecurityGroups bool) {
 		orgGUID := restoreOrg(o)
 
 		if orgGUID != "" {
-			auditors := organization.Entity["auditors"].(*[]*models.ResourceModel)
-			for _, auditor := range *auditors {
-				restoreUserRole(auditor.Entity["username"].(string), orgGUID, orgDev)
-				restoreUserRole(auditor.Entity["username"].(string), orgGUID, orgAudit)
+			if organization.Entity["auditors"] != nil {
+				auditors := organization.Entity["auditors"].(*[]*models.ResourceModel)
+				for _, auditor := range *auditors {
+					restoreUserRole(auditor.Entity["username"].(string), orgGUID, orgDev)
+					restoreUserRole(auditor.Entity["username"].(string), orgGUID, orgAudit)
+				}
 			}
 
-			billingManagers := organization.Entity["billing_managers"].(*[]*models.ResourceModel)
-			for _, manager := range *billingManagers {
-				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgDev)
-				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgBilling)
+			if organization.Entity["billing_managers"] != nil {
+				billingManagers := organization.Entity["billing_managers"].(*[]*models.ResourceModel)
+				for _, manager := range *billingManagers {
+					restoreUserRole(manager.Entity["username"].(string), orgGUID, orgDev)
+					restoreUserRole(manager.Entity["username"].(string), orgGUID, orgBilling)
+				}
 			}
 
-			managers := organization.Entity["managers"].(*[]*models.ResourceModel)
-			for _, manager := range *managers {
-				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgDev)
-				restoreUserRole(manager.Entity["username"].(string), orgGUID, orgManager)
+			if organization.Entity["managers"] != nil {
+				managers := organization.Entity["managers"].(*[]*models.ResourceModel)
+				for _, manager := range *managers {
+					restoreUserRole(manager.Entity["username"].(string), orgGUID, orgDev)
+					restoreUserRole(manager.Entity["username"].(string), orgGUID, orgManager)
+				}
 			}
 
-			privateDomains := organization.Entity["private_domains"].(*[]*models.ResourceModel)
-			for _, domain := range *privateDomains {
-				pd := privateDomain{Name: domain.Entity["name"].(string), OwningOrganizationGUID: orgGUID}
-				restorePrivateDomain(pd)
+			if organization.Entity["private_domains"] != nil {
+				privateDomains := organization.Entity["private_domains"].(*[]*models.ResourceModel)
+				for _, domain := range *privateDomains {
+					pd := privateDomain{Name: domain.Entity["name"].(string), OwningOrganizationGUID: orgGUID}
+					restorePrivateDomain(pd)
+				}
 			}
 
 			spaces := organization.Entity["spaces"].(*[]*models.ResourceModel)
@@ -313,19 +321,25 @@ func restoreFromJSON(includeSecurityGroups bool) {
 				spaceGuids[sp.Metadata["guid"].(string)] = spaceGUID
 
 				if spaceGUID != "" {
-					auditors := sp.Entity["auditors"].(*[]*models.ResourceModel)
-					for _, auditor := range *auditors {
-						restoreUserRole(auditor.Entity["username"].(string), spaceGUID, spaceAudit)
+					if sp.Entity["auditors"] != nil {
+						auditors := sp.Entity["auditors"].(*[]*models.ResourceModel)
+						for _, auditor := range *auditors {
+							restoreUserRole(auditor.Entity["username"].(string), spaceGUID, spaceAudit)
+						}
 					}
 
-					developers := sp.Entity["developers"].(*[]*models.ResourceModel)
-					for _, developer := range *developers {
-						restoreUserRole(developer.Entity["username"].(string), spaceGUID, spaceDev)
+					if sp.Entity["developers"] != nil {
+						developers := sp.Entity["developers"].(*[]*models.ResourceModel)
+						for _, developer := range *developers {
+							restoreUserRole(developer.Entity["username"].(string), spaceGUID, spaceDev)
+						}
 					}
 
-					managers := sp.Entity["managers"].(*[]*models.ResourceModel)
-					for _, manager := range *managers {
-						restoreUserRole(manager.Entity["username"].(string), spaceGUID, spaceManager)
+					if sp.Entity["managers"] != nil {
+						managers := sp.Entity["managers"].(*[]*models.ResourceModel)
+						for _, manager := range *managers {
+							restoreUserRole(manager.Entity["username"].(string), spaceGUID, spaceManager)
+						}
 					}
 				}
 
@@ -383,41 +397,67 @@ func restoreFromJSON(includeSecurityGroups bool) {
 					a.State = state
 					updateApp(appGUID, a)
 
-					routes := application.Entity["routes"].(*[]*models.ResourceModel)
-					for _, rt := range *routes {
-						domain := rt.Entity["domain"].(*models.ResourceModel)
+					boundRoute := false
+					if application.Entity["routes"] != nil {
+						routes := application.Entity["routes"].(*[]*models.ResourceModel)
+						for _, rt := range *routes {
+							domain := rt.Entity["domain"].(*models.ResourceModel)
 
-						r := route{
-							SpaceGUID: spaceGUID,
-							Port:      rt.Entity["port"],
-							Path:      rt.Entity["path"],
-							Host:      rt.Entity["host"],
-						}
-
-						domainName := domain.Entity["name"].(string)
-
-						if domain.Entity["owning_organization_guid"] == nil {
-							domainGUID := getSharedDomainGUID(domainName)
-							if domainGUID == "" {
-								showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
-								continue
+							r := route{
+								SpaceGUID: spaceGUID,
+								Port:      rt.Entity["port"],
+								Path:      rt.Entity["path"],
+								Host:      rt.Entity["host"],
 							}
-							r.DomainGUID = domainGUID
-						} else {
-							domainGUID := getPrivateDomainGUID(domainName)
-							if domainGUID == "" {
-								showWarning(fmt.Sprintf("Could not find private domain %s", domainName))
-								continue
+
+							domainName := domain.Entity["name"].(string)
+
+							if domain.Entity["owning_organization_guid"] == nil {
+								domainGUID := getSharedDomainGUID(domainName)
+								if domainGUID == "" {
+									showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
+									continue
+								}
+								r.DomainGUID = domainGUID
+							} else {
+								domainGUID := getPrivateDomainGUID(domainName)
+								if domainGUID == "" {
+									showWarning(fmt.Sprintf("Could not find private domain %s", domainName))
+									continue
+								}
+								r.DomainGUID = domainGUID
 							}
-							r.DomainGUID = domainGUID
+							routeGUID := createRoute(r)
+							showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
+							err = bindRoute(appGUID, routeGUID)
+							if err != nil {
+								showWarning(fmt.Sprintf("Error binding route %s.%s to app %s: %s", r.Host, domainName, a.Name, err.Error()))
+							} else {
+								boundRoute = true
+								showInfo(fmt.Sprintf("Successfully bound route %s.%s to app %s", r.Host, domainName, a.Name))
+							}
 						}
-						routeGUID := createRoute(r)
-						showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
-						err = bindRoute(appGUID, routeGUID)
-						if err != nil {
-							showWarning(fmt.Sprintf("Error binding route %s.%s to app %s: %s", r.Host, domainName, a.Name, err.Error()))
+					}
+
+					if !boundRoute {
+						domain := getFirstSharedDomainGUID()
+						if domain == nil {
+							showWarning(fmt.Sprintf("Could not find any shared domain for app %s.", a.Name))
 						} else {
-							showInfo(fmt.Sprintf("Successfully bound route %s.%s to app %s", r.Host, domainName, a.Name))
+							r := route{
+								SpaceGUID:  spaceGUID,
+								Host:       appGUID,
+								DomainGUID: domain.Metadata["guid"].(string),
+							}
+							routeGUID := createRoute(r)
+							showInfo(fmt.Sprintf("Binding new route to app %s", a.Name))
+							err = bindRoute(appGUID, routeGUID)
+							if err != nil {
+								showWarning(fmt.Sprintf("Error binding new route to app %s: %s", a.Name, err.Error()))
+							} else {
+								showInfo(fmt.Sprintf("Successfully bound new route to app %s", a.Name))
+							}
+
 						}
 					}
 					appIndex++
@@ -531,6 +571,15 @@ func createRoute(route route) string {
 		showInfo(fmt.Sprintf("Succesfully created route %s", route.Host))
 	}
 	return result
+}
+
+func getFirstSharedDomainGUID() *models.ResourceModel {
+	resources := util.GetResources(CliConnection, "/v2/shared_domains", 1)
+	if len(*resources) > 0 {
+		return (*resources)[0]
+	}
+
+	return nil
 }
 
 func getSharedDomainGUID(domainName string) string {
