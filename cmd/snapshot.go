@@ -32,11 +32,17 @@ var snapshotCmd = &cobra.Command{
 		securityGroups, err := util.GetSecurityGroups(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 		log.Println("groups done")
+		featureFlags, err := util.GetFeatureFlags(&util.CliConnectionCCApi{CliConnection: CliConnection})
+		util.FreakOut(err)
+		log.Println("feature flags done")
+
 		backupJSON, err := util.CreateBackupJSON(models.BackupModel{
 			Organizations:  backupResources,
 			SharedDomains:  sharedDomains,
 			SecurityGroups: securityGroups,
+			FeatureFlags:   featureFlags,
 		})
+
 		util.FreakOut(err)
 
 		err = ioutil.WriteFile(backupFile, []byte(backupJSON), 0644)

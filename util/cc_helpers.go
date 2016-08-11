@@ -18,6 +18,7 @@ const urlSuffix string = "_url"
 const OrgsURL = "/v2/organizations"
 const shardDomainsURL = "/v2/shared_domains"
 const securityGroupsURL = "/v2/security_groups"
+const featureFlagsURL = "/v2/config/feature_flags"
 
 type followDecision func(childKey string) bool
 
@@ -157,6 +158,22 @@ func (ccResources *CCResources) retriveParsedGenericResource(url string) (interf
 	}
 
 	return nil, err
+}
+
+func (ccResources *CCResources) retriveFeatureFlagsResource(url string) ([]*models.FeatureFlagModel, error) {
+
+	log.Println("Retrieving resource", url)
+
+	output, err := ccResources.ccAPI.InvokeGet(url)
+	if err != nil {
+		return nil, err
+	}
+
+	var collection []*models.FeatureFlagModel
+
+	err = json.Unmarshal([]byte(output), &collection)
+
+	return collection, err
 }
 
 type retriveQueueItem struct {
@@ -325,6 +342,30 @@ func (ccResources *CCResources) TransformToResourceModels(resources interface{})
 	return &result
 }
 
+func (ccResources *CCResources) transformToFlagModels(resources interface{}) *[]*models.FeatureFlagModel {
+	var result []*models.FeatureFlagModel
+
+	resourceArray := resources.([]interface{})
+
+	for _, r := range resourceArray {
+		resourceModel := r.(map[string]interface{})
+		var flag models.FeatureFlagModel
+
+		flag.Name = resourceModel["name"].(string)
+		flag.Enabled = resourceModel["enabled"].(bool)
+		flag.URL = resourceModel["Url"].(string)
+
+		if val, ok := resourceModel["error_message"]; ok {
+			flag.ErrorMessage = val.(string)
+		}
+
+		result = append(result, &flag)
+
+	}
+
+	return &result
+}
+
 // CreateOrgCCResources creates org resource
 func CreateOrgCCResources(ccAPI cCApi) *CCResources {
 	resourceURLsWhitelistSlice := []interface{}{
@@ -374,6 +415,17 @@ func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth
 	return resources
 }
 
+// CreateFeatureFlagsCCResources creates feature flags resources
+func CreateFeatureFlagsCCResources(ccAPI cCApi) *CCResources {
+	follow := func(childKey string) bool {
+		return false
+	}
+
+	ccResources := newCCResources(ccAPI, follow)
+
+	return ccResources
+}
+
 // GetOrgsResourcesRecurively returns all orgs
 func GetOrgsResourcesRecurively(ccAPI cCApi) (*[]*models.ResourceModel, error) {
 	ccResources := CreateOrgCCResources(ccAPI)
@@ -418,6 +470,14 @@ func RestoreOrgResourceModels(orgResources interface{}) *[]*models.ResourceModel
 	return transformedRes
 }
 
+// RestoreFlagsResourceModels gets flags as resource models
+func RestoreFlagsResourceModels(flagResources interface{}) *[]*models.FeatureFlagModel {
+	ccResources := CreateFeatureFlagsCCResources(nil)
+	result := ccResources.transformToFlagModels(flagResources)
+
+	return result
+}
+
 // GetSharedDomains returns shared domains
 func GetSharedDomains(ccAPI cCApi) (interface{}, error) {
 	ccResources := CreateSharedDomainsCCResources(ccAPI)
@@ -425,6 +485,20 @@ func GetSharedDomains(ccAPI cCApi) (interface{}, error) {
 	resources := ccResources.GetResources(shardDomainsURL, 1)
 
 	return resources, nil
+}
+
+// GetFeatureFlags returns feature flags
+func GetFeatureFlags(ccAPI cCApi) (*[]*models.FeatureFlagModel, error) {
+
+	ccResources := CreateFeatureFlagsCCResources(ccAPI)
+
+	ccFlagsResources, err := ccResources.retriveFeatureFlagsResource(featureFlagsURL)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ccFlagsResources, nil
 }
 
 // GetSecurityGroups return security groups
