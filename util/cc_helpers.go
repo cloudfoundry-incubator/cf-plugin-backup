@@ -240,6 +240,10 @@ func (ccResources *CCResources) recreateLinkForEntity(resource *models.ResourceM
 			}
 
 			if childEntity, hasEntity := resource.Entity[childKey]; hasEntity {
+				if childEntity == nil {
+					continue
+				}
+
 				childResource := ccResources.transformToResourceModelGeneric(childEntity)
 
 				resource.Entity[childKey] = childResource
@@ -270,8 +274,8 @@ func (ccResources *CCResources) transformToResourceModelGeneric(r interface{}) i
 	case []interface{}:
 		return ccResources.TransformToResourceModels(r)
 	}
-
-	panic("unknown resource type")
+	log.Fatalf("unknown resource type %T", r)
+	return nil
 }
 
 func (ccResources *CCResources) transformToResourceModel(resource interface{}) *models.ResourceModel {

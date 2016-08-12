@@ -64,10 +64,12 @@ var snapshotCmd = &cobra.Command{
 
 		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
 		for _, org := range *resources {
-			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
-				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
-					if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
-						appsToBackup = append(appsToBackup, app)
+			if org.Entity["spaces"] != nil {
+				for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
+					for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
+						if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
+							appsToBackup = append(appsToBackup, app)
+						}
 					}
 				}
 			}
