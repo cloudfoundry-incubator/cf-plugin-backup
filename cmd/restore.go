@@ -34,6 +34,13 @@ type space struct {
 	OrganizationGUID string `json:"organization_guid"`
 }
 
+type flag struct {
+	Name         string `json:"name"`
+	Enabled      bool   `json:"enabled"`
+	ErrorMessage string `json:"error_message,omitempty"`
+	URL          string `json:"url"`
+}
+
 type app struct {
 	Name               string      `json:"name"`
 	SpaceGUID          string      `json:"space_guid"`
@@ -180,6 +187,33 @@ func restoreApp(app app) string {
 	return result
 }
 
+func restoreFlag(flag models.FeatureFlagModel) string {
+	showInfo(fmt.Sprintf("Restoring Flag: %s", flag.Name))
+
+	var enabled string
+
+	if flag.Enabled {
+		enabled = "true"
+	} else {
+		enabled = "false"
+	}
+
+	pJSON := "{\"enabled\":" + enabled + "}"
+
+	url := "/v2/config/feature_flags/" + flag.Name
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		url, "-H", "Content-Type: application/json",
+		"-d", string(pJSON), "-X", "PUT")
+
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create flag %s, exception message: %s",
+			flag.Name, err.Error()))
+	}
+
+	return showFlagResult(resp, flag)
+}
+
 func restoreSpace(space space) string {
 	showInfo(fmt.Sprintf("Restoring space: %s", space.Name))
 	oJSON, err := json.Marshal(space)
@@ -199,6 +233,37 @@ func restoreSpace(space space) string {
 		showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
 	}
 	return result
+}
+
+func showFlagResult(resp []string, flag models.FeatureFlagModel) string {
+	fResp := make(map[string]interface{})
+
+	err := json.Unmarshal([]byte(resp[0]), &fResp)
+
+	if err != nil {
+		showWarning(fmt.Sprintf("Got unknow response while restoring flag %s: %s",
+			flag.Name, err.Error()))
+		return ""
+	}
+
+	if fResp["error_code"] != nil {
+		showWarning(fmt.Sprintf("got %v while restoring flag %s",
+			fResp["error_code"], flag.Name))
+		return ""
+	}
+
+	if fResp["name"] != nil {
+		inName := fResp["name"].(string)
+		if inName == flag.Name {
+			showInfo(fmt.Sprintf("Succesfully restored flag %s", flag.Name))
+		} else {
+			showWarning(fmt.Sprintf("Name %s does not match requested name %s",
+				fResp["name"], flag.Name))
+		}
+	} else {
+		showWarning(fmt.Sprintln("\tWarning unknown answer received"))
+	}
+	return ""
 }
 
 func getResult(resp []string, checkField, expectedValue string) (string, error) {
@@ -277,6 +342,12 @@ func restoreFromJSON(includeSecurityGroups bool) {
 	}
 
 	orgs := util.RestoreOrgResourceModels(backupObject.Organizations)
+	featureflags := util.RestoreFlagsResourceModels(backupObject.FeatureFlags)
+
+	for _, flagobj := range *featureflags {
+		restoreFlag(*flagobj)
+	}
+
 	for _, organization := range *orgs {
 		o := org{Name: organization.Entity["name"].(string), QuotaGUID: organization.Entity["quota_definition_guid"].(string)}
 		orgGUID := restoreOrg(o)

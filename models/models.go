@@ -20,4 +20,13 @@ type BackupModel struct {
 	Organizations  interface{} `json:"organizations"`
 	SharedDomains  interface{} `json:"shared_domains"`
 	SecurityGroups interface{} `json:"security_groups"`
+	FeatureFlags   interface{} `json:"feature_flags"`
+}
+
+// FeatureFlagModel represents the feature flag json model
+type FeatureFlagModel struct {
+	Name         string `json:"name"`
+	Enabled      bool   `json:"enabled"`
+	ErrorMessage string `json:"error_message,omitempty"`
+	URL          string `json:"url"`
 }
