@@ -353,7 +353,7 @@ func (ccResources *CCResources) transformToFlagModels(resources interface{}) *[]
 
 		flag.Name = resourceModel["name"].(string)
 		flag.Enabled = resourceModel["enabled"].(bool)
-		flag.URL = resourceModel["Url"].(string)
+		flag.URL = resourceModel["url"].(string)
 
 		if val, ok := resourceModel["error_message"]; ok {
 			flag.ErrorMessage = val.(string)
