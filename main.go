@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime/debug"
 
 	"github.com/cloudfoundry/cli/cf/terminal"
 	"github.com/cloudfoundry/cli/cf/trace"
@@ -28,7 +29,8 @@ func main() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Panic in Backup plugin", r)
+			fmt.Printf("Panic in Backup plugin: %s\n", r)
+			fmt.Printf("%s\n", debug.Stack())
 		}
 	}()
 
