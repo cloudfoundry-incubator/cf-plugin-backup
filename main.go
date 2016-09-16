@@ -68,6 +68,15 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 
 //GetMetadata returns metadata for cf cli
 func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
+	helpMessages := map[string]string{
+		"snapshot": "cf backup snapshot",
+		"restore":  "cf backup restore [--include-security-groups]",
+		"info":     "cf backup info",
+	}
+	summary := ""
+	for _, value := range helpMessages {
+		summary = fmt.Sprintf("%s \n %s ", summary, value)
+	}
 	return plugin.PluginMetadata{
 		Name: "Backup",
 		Version: plugin.VersionType{
@@ -85,28 +94,28 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 				Name:     "backup",
 				HelpText: "View command's help text",
 				UsageDetails: plugin.Usage{
-					Usage: "cf backup",
+					Usage: summary,
 				},
 			},
 			plugin.Command{
 				Name:     "backup snapshot",
 				HelpText: "Create a backup",
 				UsageDetails: plugin.Usage{
-					Usage: "cf backup snapshot",
+					Usage: helpMessages["snapshot"],
 				},
 			},
 			plugin.Command{
 				Name:     "backup restore",
 				HelpText: "Restore a backup",
 				UsageDetails: plugin.Usage{
-					Usage: "cf backup restore [--include-security-groups]",
+					Usage: helpMessages["restore"],
 				},
 			},
 			plugin.Command{
 				Name:     "backup info",
 				HelpText: "Show backup summary",
 				UsageDetails: plugin.Usage{
-					Usage: "cf backup info",
+					Usage: helpMessages["info"],
 				},
 			},
 		},
