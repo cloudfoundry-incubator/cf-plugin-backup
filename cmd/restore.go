@@ -138,8 +138,10 @@ func restoreUserRole(user, space, role string) {
 func getUserID(user string) string {
 	resources := util.GetResources(CliConnection, "/v2/users", 1)
 	for _, u := range *resources {
-		if u.Entity["username"].(string) == user {
-			return u.Metadata["guid"].(string)
+		if u.Entity["username"] != nil {
+			if u.Entity["username"].(string) == user {
+				return u.Metadata["guid"].(string)
+			}
 		}
 	}
 
