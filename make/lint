@@ -6,7 +6,7 @@ set -o errexit
 
 echo "${OK_COLOR}==> Linting${ERROR_COLOR}"
 
-ISSUES=$(mktemp)
+ISSUES=$(mktemp /tmp/XXXXX)
 
 trap "rm -f ${ISSUES}" HUP INT TERM
 

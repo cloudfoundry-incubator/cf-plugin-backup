@@ -5,7 +5,7 @@ set -o errexit
 . make/include/colors.sh
 
 echo "${OK_COLOR}==> Formating ${ERROR_COLOR}"
-ISSUES=$(mktemp)
+ISSUES=$(mktemp /tmp/XXXXX)
 
 trap "rm -f ${ISSUES}" HUP INT TERM
 
