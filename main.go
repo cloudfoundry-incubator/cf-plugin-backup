@@ -6,8 +6,9 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/cloudfoundry/cli/cf/terminal"
-	"github.com/cloudfoundry/cli/cf/trace"
+	"github.com/hpcloud/termui"
+	"github.com/hpcloud/termui/termpassword"
+
 	"github.com/cloudfoundry/cli/plugin"
 
 	"github.com/hpcloud/cf-plugin-backup/cmd"
@@ -20,7 +21,7 @@ var target string
 type BackupPlugin struct {
 	cliConnection plugin.CliConnection
 	argLength     int
-	ui            terminal.UI
+	ui            *termui.UI
 	token         string
 }
 
@@ -42,10 +43,7 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 	c.cliConnection = cliConnection
 	c.argLength = len(args)
 
-	traceEnv := os.Getenv("CF_TRACE")
-	traceLogger := trace.NewLogger(commands.Writer, false, traceEnv, "")
-
-	c.ui = terminal.NewUI(os.Stdin, commands.Writer, terminal.NewTeePrinter(commands.Writer), traceLogger)
+	c.ui = termui.New(os.Stdin, commands.Writer, termpassword.NewReader())
 
 	bearer, err := commands.GetBearerToken(cliConnection)
 	if err != nil {
