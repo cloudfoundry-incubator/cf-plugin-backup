@@ -84,8 +84,8 @@ type Set interface {
 	// panic.
 	Intersect(other Set) Set
 
-	// Determines if every element in the other set
-	// is in this set.
+	// Determines if every element in this set is in
+	// the other set.
 	//
 	// Note that the argument to IsSubset
 	// must be of the same type as the receiver
@@ -93,8 +93,8 @@ type Set interface {
 	// panic.
 	IsSubset(other Set) bool
 
-	// Determines if every element in this set is in
-	// the other set.
+	// Determines if every element in the other set
+	// is in this set.
 	//
 	// Note that the argument to IsSuperset
 	// must be of the same type as the receiver
@@ -105,6 +105,10 @@ type Set interface {
 	// Returns a channel of elements that you can
 	// range over.
 	Iter() <-chan interface{}
+
+	// Returns an Iterator object that you can
+	// use to range over the set.
+	Iterator() *Iterator
 
 	// Remove a single element from the set.
 	Remove(i interface{})
