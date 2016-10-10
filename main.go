@@ -18,7 +18,8 @@ import (
 )
 
 var target string
-var version string 
+var version string
+
 //BackupPlugin represents the struct of the cf cli plugin
 type BackupPlugin struct {
 	cliConnection plugin.CliConnection
@@ -80,8 +81,8 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 	pluginVersion, err := semver.ParseTolerant(version)
 
 	if err != nil {
-        	panic(fmt.Sprintf("Invalid plugin version %s: %s", version, err))
-    	}
+		panic(fmt.Sprintf("Invalid plugin version %s: %s", version, err))
+	}
 
 	return plugin.PluginMetadata{
 		Name: "Backup",
