@@ -6,6 +6,8 @@ import (
 	"os"
 	"runtime/debug"
 
+	"github.com/blang/semver"
+
 	"github.com/hpcloud/termui"
 	"github.com/hpcloud/termui/termpassword"
 
@@ -16,7 +18,7 @@ import (
 )
 
 var target string
-
+var version string 
 //BackupPlugin represents the struct of the cf cli plugin
 type BackupPlugin struct {
 	cliConnection plugin.CliConnection
@@ -75,12 +77,18 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 	for _, value := range helpMessages {
 		summary = fmt.Sprintf("%s \n %s ", summary, value)
 	}
+	pluginVersion, err := semver.ParseTolerant(version)
+
+	if err != nil {
+        	panic(fmt.Sprintf("Invalid plugin version %s: %s", version, err))
+    	}
+
 	return plugin.PluginMetadata{
 		Name: "Backup",
 		Version: plugin.VersionType{
-			Major: 1,
-			Minor: 0,
-			Build: 0,
+			Major: int(pluginVersion.Major),
+			Minor: int(pluginVersion.Minor),
+			Build: int(pluginVersion.Patch),
 		},
 		MinCliVersion: plugin.VersionType{
 			Major: 1,

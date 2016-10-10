@@ -1,7 +1,7 @@
 {
 	"ImportPath": "github.com/hpcloud/cf-plugin-backup",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v72",
+	"GodepVersion": "v74",
 	"Packages": [
 		"./..."
 	],
@@ -62,8 +62,8 @@
 		},
 		{
 			"ImportPath": "github.com/blang/semver",
-			"Comment": "v3.1.0",
-			"Rev": "aea32c919a18e5ef4537bbd283ff29594b1b0165"
+			"Comment": "v3.3.0",
+			"Rev": "60ec3488bfea7cca02b021d106d9911120d25fe9"
 		},
 		{
 			"ImportPath": "github.com/cheggaaa/pb",
