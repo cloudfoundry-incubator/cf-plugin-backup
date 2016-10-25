@@ -85,7 +85,7 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 	}
 
 	return plugin.PluginMetadata{
-		Name: "Backup",
+		Name: "backup",
 		Version: plugin.VersionType{
 			Major: int(pluginVersion.Major),
 			Minor: int(pluginVersion.Minor),

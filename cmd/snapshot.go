@@ -72,33 +72,38 @@ var snapshotCmd = &cobra.Command{
 		for _, org := range *resources {
 			if org.Entity["spaces"] != nil {
 				for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
-					for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
-						if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
-							appsToBackup = append(appsToBackup, app)
+					if space.Entity["apps"] != nil {
+						for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
+							if dockerImg, hit := app.Entity["docker_image"]; !hit || dockerImg == nil {
+								appsToBackup = append(appsToBackup, app)
+							}
 						}
 					}
 				}
 			}
 		}
 
-		log.Printf("Saving bits for %d apps", len(appsToBackup))
+		if len(appsToBackup) > 0 {
 
-		termuiPGBar := termuiprogressbar.NewProgressBar(len(appsToBackup), true)
-		termuiPGBar.Start()
+			log.Printf("Saving bits for %d apps", len(appsToBackup))
 
-		for _, app := range appsToBackup {
-			appGUID := app.Metadata["guid"].(string)
-			if currentIndex < len(appsToBackup) {
-				termuiPGBar.Increment()
-				currentIndex++
+			termuiPGBar := termuiprogressbar.NewProgressBar(len(appsToBackup), true)
+			termuiPGBar.Start()
+
+			for _, app := range appsToBackup {
+				appGUID := app.Metadata["guid"].(string)
+				if currentIndex < len(appsToBackup) {
+					termuiPGBar.Increment()
+					currentIndex++
+				}
+				appZipPath := filepath.Join(backupDir, backupAppBitsDir, appGUID+".zip")
+				err := appBits.SaveDroplet(appGUID, appZipPath)
+				if err != nil {
+					log.Printf("Could not save bits for %v: %v", appGUID, err)
+				}
 			}
-			appZipPath := filepath.Join(backupDir, backupAppBitsDir, appGUID+".zip")
-			err := appBits.SaveDroplet(appGUID, appZipPath)
-			if err != nil {
-				log.Printf("Could not save bits for %v: %v", appGUID, err)
-			}
+			termuiPGBar.FinishPrint("App bits saved")
 		}
-		termuiPGBar.FinishPrint("App bits saved")
 	},
 }
 
