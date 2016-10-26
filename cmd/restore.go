@@ -416,6 +416,11 @@ func restoreFromJSON(includeSecurityGroups bool) {
 					}
 				}
 
+				//continue if there are no apps to restore
+				if sp.Entity["apps"] == nil {
+					continue
+				}
+
 				apps := sp.Entity["apps"].(*[]*models.ResourceModel)
 				packager := &util.CFPackager{
 					Cli:    CliConnection,
