@@ -10,14 +10,16 @@ set -o errexit
 echo "${OK_COLOR}==> Building ${ERROR_COLOR}"
 
 for OS in ${OSES}; do \
-		 env GOOS=${OS} GOARCH=amd64 go build -o build/${OS}-amd64/cf-plugin-backup \
-		 -ldflags="-X main.version=${ARTIFACT_VERSION}" \
-		 ./  
+  env GOOS=${OS} GOARCH=amd64 go build -o build/${OS}-amd64/cf-plugin-backup \
+    -ldflags="-X main.version=${ARTIFACT_VERSION}" \
+    ./
+  cp README.txt LICENSE.txt build/${OS}-amd64/
 done
 
 #windows is special
 env GOOS=windows GOARCH=amd64 go build -o build/windows-amd64/cf-plugin-backup.exe \
--ldflags="-X main.version=${ARTIFACT_VERSION}" \
-./
+  -ldflags="-X main.version=${ARTIFACT_VERSION}" \
+  ./
+cp README.txt LICENSE.txt build/windows-amd64/
 
 echo "${NO_COLOR}\c"
