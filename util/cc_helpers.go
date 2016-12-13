@@ -6,17 +6,19 @@ import (
 	"log"
 	"strings"
 
-	"github.com/deckarep/golang-set" // MIT License
+	// MIT License
 
 	"github.com/cloudfoundry/cli/plugin"
+	"github.com/deckarep/golang-set"
 	"github.com/hpcloud/cf-plugin-backup/models"
 )
 
 const urlSuffix string = "_url"
 
 // OrgsURL represents the organizations url path
+const orgQoutasURL = "/v2/quota_definitions"
 const OrgsURL = "/v2/organizations"
-const shardDomainsURL = "/v2/shared_domains"
+const sharedDomainsURL = "/v2/shared_domains"
 const securityGroupsURL = "/v2/security_groups"
 const featureFlagsURL = "/v2/config/feature_flags"
 
@@ -482,9 +484,19 @@ func RestoreFlagsResourceModels(flagResources interface{}) *[]*models.FeatureFla
 func GetSharedDomains(ccAPI cCApi) (interface{}, error) {
 	ccResources := CreateSharedDomainsCCResources(ccAPI)
 
-	resources := ccResources.GetResources(shardDomainsURL, 1)
+	resources := ccResources.GetResources(sharedDomainsURL, 1)
 
 	return resources, nil
+}
+
+// GetOrgQuotaDefinitions returns the Organization Quota definitions
+func GetOrgQuotaDefinitions(ccAPI cCApi) (interface{}, error) {
+	ccResources := CreateSharedDomainsCCResources(ccAPI)
+
+	resources := ccResources.GetResources(orgQoutasURL, 2)
+
+	return resources, nil
+
 }
 
 // GetFeatureFlags returns feature flags
