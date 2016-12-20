@@ -15,6 +15,7 @@ import (
 
 	"github.com/hpcloud/cf-plugin-backup/cmd"
 	"github.com/hpcloud/cf-plugin-backup/commands"
+	"github.com/hpcloud/cf-plugin-backup/util"
 )
 
 var target string
@@ -55,6 +56,17 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 	}
 
 	c.token = bearer
+
+	isAdmin, err := util.CheckUserScope(bearer, "cloud_controller.admin")
+	if err != nil {
+		commands.ShowFailed(fmt.Sprint("ERROR:", err))
+		return
+	}
+
+	if !isAdmin {
+		commands.ShowFailed("ERROR: Logged in user has no admin scope.")
+		return
+	}
 
 	if c.argLength == 1 {
 		c.showCommandsWithHelpText()
