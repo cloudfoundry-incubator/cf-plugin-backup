@@ -15,8 +15,9 @@ import (
 
 const urlSuffix string = "_url"
 
-// OrgsURL represents the organizations url path
 const orgQoutasURL = "/v2/quota_definitions"
+
+// OrgsURL represents the organizations url path
 const OrgsURL = "/v2/organizations"
 const sharedDomainsURL = "/v2/shared_domains"
 const securityGroupsURL = "/v2/security_groups"
@@ -368,6 +369,17 @@ func (ccResources *CCResources) transformToFlagModels(resources interface{}) *[]
 	return &result
 }
 
+//CreateQuotaCCResources creates quota org resources
+func CreateQuotaCCResources(ccAPI cCApi) *CCResources {
+	follow := func(childKey string) bool {
+		return false
+	}
+
+	ccResources := newCCResources(ccAPI, follow)
+
+	return ccResources
+}
+
 // CreateOrgCCResources creates org resource
 func CreateOrgCCResources(ccAPI cCApi) *CCResources {
 	resourceURLsWhitelistSlice := []interface{}{
@@ -462,6 +474,14 @@ func CreateSecurityGroupsCCResources(ccAPI cCApi) *CCResources {
 	ccResources := newCCResources(ccAPI, follow)
 
 	return ccResources
+}
+
+// RestoreQuotaResourceModels gets quotas as resource models
+func RestoreQuotaResourceModels(quotaResources interface{}) *[]*models.ResourceModel {
+	ccResources := CreateQuotaCCResources(nil)
+	transformedRes := ccResources.TransformToResourceModels(quotaResources)
+
+	return transformedRes
 }
 
 // RestoreOrgResourceModels gets orgs as resource models

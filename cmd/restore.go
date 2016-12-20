@@ -26,12 +26,21 @@ const (
 
 type org struct {
 	Name      string `json:"name"`
-	QuotaGUID string `json:"quota_definition_guid"`
+	QuotaGUID string `json:"quota_definition_guid,omitempty"`
 }
 
 type space struct {
 	Name             string `json:"name"`
 	OrganizationGUID string `json:"organization_guid"`
+}
+
+type quota struct {
+	Name                    string  `json:"name"`
+	GUID                    string  `json:"guid"`
+	NonBasicServicesAllowed bool    `json:"non_basic_services_allowed"`
+	TotalServices           float64 `json:"total_services"`
+	TotalRoutes             float64 `json:"total_routes"`
+	MemoryLimit             float64 `json:"memory_limit"`
 }
 
 type flag struct {
@@ -216,6 +225,41 @@ func restoreFlag(flag models.FeatureFlagModel) string {
 	return showFlagResult(resp, flag)
 }
 
+func restoreQuota(quota quota) (string, error) {
+
+	resources := util.GetResources(CliConnection, "/v2/quota_definitions?q=name:"+quota.Name, 1)
+	for _, u := range *resources {
+		if u.Entity["name"].(string) == quota.Name {
+			showInfo(fmt.Sprintf("Deleting old quota %s", quota.Name))
+			err := deleteQuota(u.Metadata["guid"].(string))
+			if err != nil {
+				return "", err
+			}
+			break
+		}
+	}
+	showInfo(fmt.Sprintf("Restoring quota: %s - Guid=%s", quota.Name, quota.GUID))
+	oJSON, err := json.Marshal(quota)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/quota_definitions", "-H", "Content-Type: application/json",
+		"-d", string(oJSON), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create quota %s, exception message: %s",
+			quota.Name, err.Error()))
+	}
+
+	result, err := getResult(resp, "name", quota.Name)
+
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring quota %s: %s", quota.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored quota %s", quota.Name))
+	}
+	return result, nil
+}
+
 func restoreSpace(space space) string {
 	showInfo(fmt.Sprintf("Restoring space: %s", space.Name))
 	oJSON, err := json.Marshal(space)
@@ -320,7 +364,7 @@ func restoreSharedDomain(sharedDomain sharedDomain) (string, error) {
 	return result, nil
 }
 
-func restoreFromJSON(includeSecurityGroups bool) {
+func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 
 	//map["old_guid"] = "new_guid"
 	spaceGuids := make(map[string]string)
@@ -350,9 +394,34 @@ func restoreFromJSON(includeSecurityGroups bool) {
 		restoreFlag(*flagobj)
 	}
 
+	quotaGuids := make(map[string]string)
+
+	if includeQuotaDefinitions {
+		quotas := util.RestoreQuotaResourceModels(backupObject.OrgQuotas)
+		for _, quotaItem := range *quotas {
+			quotaJ := quota{Name: quotaItem.Entity["name"].(string),
+				NonBasicServicesAllowed: quotaItem.Entity["non_basic_services_allowed"].(bool),
+				TotalServices:           quotaItem.Entity["total_services"].(float64),
+				TotalRoutes:             quotaItem.Entity["total_routes"].(float64),
+				MemoryLimit:             quotaItem.Entity["memory_limit"].(float64),
+				GUID:                    quotaItem.Metadata["guid"].(string),
+			}
+
+			quotaRez, err := restoreQuota(quotaJ)
+			if err != nil {
+				showWarning(fmt.Sprintf("Could not add quota %s, because: %s, organizations for this quota will be restored to the default quota", quotaJ.Name, err.Error()))
+			}
+			quotaGuids[quotaItem.Metadata["guid"].(string)] = quotaRez
+		}
+	}
 	if orgs != nil {
 		for _, organization := range *orgs {
-			o := org{Name: organization.Entity["name"].(string), QuotaGUID: organization.Entity["quota_definition_guid"].(string)}
+			var o org
+			if includeQuotaDefinitions && quotaGuids[organization.Entity["quota_definition_guid"].(string)] != "" {
+				o = org{Name: organization.Entity["name"].(string), QuotaGUID: quotaGuids[organization.Entity["quota_definition_guid"].(string)]}
+			} else {
+				o = org{Name: organization.Entity["name"].(string)}
+			}
 			orgGUID := restoreOrg(o)
 
 			if orgGUID != "" {
@@ -597,6 +666,17 @@ func deleteSecurityGroup(guid string) error {
 	return nil
 }
 
+func deleteQuota(guid string) error {
+	_, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/quota_definitions/"+guid, "-H", "Content-Type: application/x-www-form-urlencoded",
+		"-X", "DELETE")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func createSecurityGroup(securityGroup securityGroup) (string, error) {
 	showInfo(fmt.Sprintf("Creating security group: %s", securityGroup.Name))
 	oJSON, err := json.Marshal(securityGroup)
@@ -723,12 +803,14 @@ var restoreCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		includeSecurityGroups, _ := cmd.Flags().GetBool("include-security-groups")
-		restoreFromJSON(includeSecurityGroups)
+		includeQuotaDefinitions, _ := cmd.Flags().GetBool("include-quota-definitions")
+		restoreFromJSON(includeSecurityGroups, includeQuotaDefinitions)
 	},
 }
 
 func init() {
 	restoreCmd.Flags().Bool("include-security-groups", false, "Restore security groups")
+	restoreCmd.Flags().Bool("include-quota-definitions", false, "Restore quota definitions")
 	RootCmd.AddCommand(restoreCmd)
 
 	// Here you will define your flags and configuration settings.
