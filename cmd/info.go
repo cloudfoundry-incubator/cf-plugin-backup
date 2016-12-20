@@ -28,25 +28,34 @@ It includes a summary of organizations, spaces and apps
 		err = json.Unmarshal(backupJSON, &backupModel)
 		util.FreakOut(err)
 
-		resources := util.RestoreOrgResourceModels(backupModel.Organizations)
-		for _, org := range *resources {
-			fmt.Println("-", "Org ", org.Entity["name"])
-			for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
-				fmt.Println("--", "Space ", space.Entity["name"])
-				for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
-					fmt.Println("---", "App ", app.Entity["name"])
+		if backupModel.Organizations == nil {
+			fmt.Println("No organizations backed up.")
+		} else {
+			resources := util.RestoreOrgResourceModels(backupModel.Organizations)
+			if resources != nil {
+				for _, org := range *resources {
+					fmt.Println("-", "Org ", org.Entity["name"])
+					if org.Entity["spaces"] != nil {
+						for _, space := range *(org.Entity["spaces"].(*[]*models.ResourceModel)) {
+							fmt.Println("--", "Space ", space.Entity["name"])
+							if space.Entity["apps"] != nil {
+								for _, app := range *(space.Entity["apps"].(*[]*models.ResourceModel)) {
+									fmt.Println("---", "App ", app.Entity["name"])
 
-					appGUID := app.Metadata["guid"].(string)
-					appZipPath := filepath.Join(backupDir, backupAppBitsDir, appGUID+".zip")
-					appZip, err := os.Open(appZipPath)
-					if err == nil {
-						zipStat, err := appZip.Stat()
-						if err == nil {
-							fmt.Println("----", "Packge Size", zipStat.Size(), "Bytes")
+									appGUID := app.Metadata["guid"].(string)
+									appZipPath := filepath.Join(backupDir, backupAppBitsDir, appGUID+".zip")
+									appZip, err := os.Open(appZipPath)
+									if err == nil {
+										zipStat, err := appZip.Stat()
+										if err == nil {
+											fmt.Println("----", "Packge Size", zipStat.Size(), "Bytes")
+										}
+										appZip.Close()
+									}
+								}
+							}
 						}
-						appZip.Close()
 					}
-
 				}
 			}
 		}
