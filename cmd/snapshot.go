@@ -23,6 +23,9 @@ var snapshotCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var currentIndex int
 
+		orgQuotas, err := util.GetOrgQuotaDefinitions(&util.CliConnectionCCApi{CliConnection: CliConnection})
+		util.FreakOut(err)
+		log.Println("org quota definitions done")
 		backupResources, err := util.GetOrgsResourcesRecurively(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 		log.Println("orgs done")
@@ -37,6 +40,7 @@ var snapshotCmd = &cobra.Command{
 		log.Println("feature flags done")
 
 		backupJSON, err := util.CreateBackupJSON(models.BackupModel{
+			OrgQuotas:      orgQuotas,
 			Organizations:  backupResources,
 			SharedDomains:  sharedDomains,
 			SecurityGroups: securityGroups,

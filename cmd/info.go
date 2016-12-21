@@ -48,7 +48,7 @@ It includes a summary of organizations, spaces and apps
 									if err == nil {
 										zipStat, err := appZip.Stat()
 										if err == nil {
-											fmt.Println("----", "Packge Size", zipStat.Size(), "Bytes")
+											fmt.Println("----", "Package Size", zipStat.Size(), "Bytes")
 										}
 										appZip.Close()
 									}
