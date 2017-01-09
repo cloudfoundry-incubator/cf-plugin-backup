@@ -26,6 +26,9 @@ var snapshotCmd = &cobra.Command{
 		orgQuotas, err := util.GetOrgQuotaDefinitions(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 		log.Println("org quota definitions done")
+		spaceQuotas, err := util.GetSpaceQuotaDefinitions(&util.CliConnectionCCApi{CliConnection: CliConnection})
+		util.FreakOut(err)
+		log.Println("space quota definitions done")
 		backupResources, err := util.GetOrgsResourcesRecurively(&util.CliConnectionCCApi{CliConnection: CliConnection})
 		util.FreakOut(err)
 		log.Println("orgs done")
@@ -41,6 +44,7 @@ var snapshotCmd = &cobra.Command{
 
 		backupJSON, err := util.CreateBackupJSON(models.BackupModel{
 			OrgQuotas:      orgQuotas,
+			SpaceQuotas:    spaceQuotas,
 			Organizations:  backupResources,
 			SharedDomains:  sharedDomains,
 			SecurityGroups: securityGroups,

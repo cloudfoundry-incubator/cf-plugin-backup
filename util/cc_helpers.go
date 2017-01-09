@@ -15,7 +15,8 @@ import (
 
 const urlSuffix string = "_url"
 
-const orgQoutasURL = "/v2/quota_definitions"
+const orgQuotasURL = "/v2/quota_definitions"
+const spaceQuotasURL = "/v2/space_quota_definitions"
 
 // OrgsURL represents the organizations url path
 const OrgsURL = "/v2/organizations"
@@ -242,7 +243,16 @@ func (ccResources *CCResources) GetResource(url string, relationsDepth int) *mod
 // GetResources gets resources
 func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]*models.ResourceModel {
 	res := ccResources.getGenericResource(url, relationsDepth)
-	return res.(*[]*models.ResourceModel)
+	switch v := res.(type) {
+	default:
+		_ = v
+		temp := make([]*models.ResourceModel, 0)
+		res = &temp
+		return res.(*[]*models.ResourceModel)
+	case *[]*models.ResourceModel:
+		return res.(*[]*models.ResourceModel)
+	}
+	//return nil
 }
 
 func (ccResources *CCResources) recreateLinkForEntity(resource *models.ResourceModel) {
@@ -369,6 +379,17 @@ func (ccResources *CCResources) transformToFlagModels(resources interface{}) *[]
 	return &result
 }
 
+//CreateSpaceQuotaCCResources creates space quota org resources
+func CreateSpaceQuotaCCResources(ccAPI cCApi) *CCResources {
+	follow := func(childKey string) bool {
+		return false
+	}
+
+	ccResources := newCCResources(ccAPI, follow)
+
+	return ccResources
+}
+
 //CreateQuotaCCResources creates quota org resources
 func CreateQuotaCCResources(ccAPI cCApi) *CCResources {
 	follow := func(childKey string) bool {
@@ -484,6 +505,14 @@ func RestoreQuotaResourceModels(quotaResources interface{}) *[]*models.ResourceM
 	return transformedRes
 }
 
+// RestoreSpaceQuotaResourceModels gets space quotas as resource models
+func RestoreSpaceQuotaResourceModels(spaceQuotaResources interface{}) *[]*models.ResourceModel {
+	ccResources := CreateSpaceQuotaCCResources(nil)
+	transformedRes := ccResources.TransformToResourceModels(spaceQuotaResources)
+
+	return transformedRes
+}
+
 // RestoreOrgResourceModels gets orgs as resource models
 func RestoreOrgResourceModels(orgResources interface{}) *[]*models.ResourceModel {
 	ccResources := CreateOrgCCResources(nil)
@@ -513,7 +542,17 @@ func GetSharedDomains(ccAPI cCApi) (interface{}, error) {
 func GetOrgQuotaDefinitions(ccAPI cCApi) (interface{}, error) {
 	ccResources := CreateSharedDomainsCCResources(ccAPI)
 
-	resources := ccResources.GetResources(orgQoutasURL, 2)
+	resources := ccResources.GetResources(orgQuotasURL, 2)
+
+	return resources, nil
+
+}
+
+// GetSpaceQuotaDefinitions returns the Spaces Quota definitions
+func GetSpaceQuotaDefinitions(ccAPI cCApi) (interface{}, error) {
+	ccResources := CreateSharedDomainsCCResources(ccAPI)
+
+	resources := ccResources.GetResources(spaceQuotasURL, 2)
 
 	return resources, nil
 

@@ -36,6 +36,9 @@ func CheckUserScope(jwtToken, scope string) (bool, error) {
 	hasScope := false
 
 	payload := strings.Split(jwtToken, ".")[1]
+	if l := len(payload) % 4; l > 0 {
+		payload += strings.Repeat("=", 4-l)
+	}
 	b, err := base64.URLEncoding.DecodeString(payload)
 
 	if err != nil {

@@ -32,6 +32,7 @@ type org struct {
 type space struct {
 	Name             string `json:"name"`
 	OrganizationGUID string `json:"organization_guid"`
+	SpaceQuotaGUID   string `json:"space_quota_definition_guid,omitempty"`
 }
 
 type quota struct {
@@ -41,6 +42,19 @@ type quota struct {
 	TotalServices           float64 `json:"total_services"`
 	TotalRoutes             float64 `json:"total_routes"`
 	MemoryLimit             float64 `json:"memory_limit"`
+}
+
+type spacequota struct {
+	Name                    string  `json:"name"`
+	NonBasicServicesAllowed bool    `json:"non_basic_services_allowed"`
+	TotalServices           float64 `json:"total_services"`
+	TotalRoutes             float64 `json:"total_routes"`
+	TotalReservedRoutePorts float64 `json:"total_reserved_route_ports,omitempty"`
+	MemoryLimit             float64 `json:"memory_limit"`
+	TotalServiceKeys        float64 `json:"total_service_keys,omitempty"`
+	InstanceMemoryLimit     float64 `json:"instance_memory_limit,omitempty"`
+	AppInstanceLimit        float64 `json:"app_instance_limit,omitempty"`
+	OrganizationGUID        string  `json:"organization_guid"`
 }
 
 type flag struct {
@@ -260,6 +274,43 @@ func restoreQuota(quota quota) (string, error) {
 	return result, nil
 }
 
+func restoreSpaceQuota(spacequota spacequota) (string, error) {
+
+	resources := util.GetResources(CliConnection, "/v2/space_quota_definitions?q=name:"+spacequota.Name, 1)
+	if resources != nil {
+		for _, u := range *resources {
+			if u.Entity["name"].(string) == spacequota.Name {
+				showInfo(fmt.Sprintf("Deleting old space quota %s", spacequota.Name))
+				err := deleteSpaceQuota(u.Metadata["guid"].(string))
+				if err != nil {
+					return "", err
+				}
+				break
+			}
+		}
+	}
+	showInfo(fmt.Sprintf("Restoring space quota: %s", spacequota.Name))
+	oJSON, err := json.Marshal(spacequota)
+	util.FreakOut(err)
+
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/space_quota_definitions", "-H", "Content-Type: application/json",
+		"-d", string(oJSON), "-X", "POST")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not create quota %s, exception message: %s",
+			spacequota.Name, err.Error()))
+	}
+
+	result, err := getResult(resp, "name", spacequota.Name)
+
+	if err != nil {
+		showWarning(fmt.Sprintf("Error restoring quota %s: %s", spacequota.Name, err.Error()))
+	} else {
+		showInfo(fmt.Sprintf("Succesfully restored quota %s", spacequota.Name))
+	}
+	return result, nil
+}
+
 func restoreSpace(space space) string {
 	showInfo(fmt.Sprintf("Restoring space: %s", space.Name))
 	oJSON, err := json.Marshal(space)
@@ -364,6 +415,49 @@ func restoreSharedDomain(sharedDomain sharedDomain) (string, error) {
 	return result, nil
 }
 
+func restoreQuotasWithGuids(backupObject *models.BackupModel,
+	quotaGuids *map[string]string) {
+	quotas := util.RestoreQuotaResourceModels(backupObject.OrgQuotas)
+	for _, quotaItem := range *quotas {
+		quotaJ := quota{Name: quotaItem.Entity["name"].(string),
+			NonBasicServicesAllowed: quotaItem.Entity["non_basic_services_allowed"].(bool),
+			TotalServices:           quotaItem.Entity["total_services"].(float64),
+			TotalRoutes:             quotaItem.Entity["total_routes"].(float64),
+			MemoryLimit:             quotaItem.Entity["memory_limit"].(float64),
+			GUID:                    quotaItem.Metadata["guid"].(string),
+		}
+
+		quotaRez, err := restoreQuota(quotaJ)
+		if err != nil {
+			showWarning(fmt.Sprintf("Could not add quota %s, because: %s, organizations for this quota will be restored to the default quota", quotaJ.Name, err.Error()))
+		}
+		(*quotaGuids)[quotaItem.Metadata["guid"].(string)] = quotaRez
+	}
+}
+
+func restoreSpaceQuotasWithGuids(backupObject *models.BackupModel,
+	spaceQuotaGuids *map[string]string,
+	oldOrgGUID string, newOrgGUID string) {
+	quotas := util.RestoreSpaceQuotaResourceModels(backupObject.SpaceQuotas)
+	for _, quotaItem := range *quotas {
+		if quotaItem.Entity["organization_guid"].(string) == oldOrgGUID {
+			quotaJ := spacequota{Name: quotaItem.Entity["name"].(string),
+				NonBasicServicesAllowed: quotaItem.Entity["non_basic_services_allowed"].(bool),
+				TotalServices:           quotaItem.Entity["total_services"].(float64),
+				TotalRoutes:             quotaItem.Entity["total_routes"].(float64),
+				MemoryLimit:             quotaItem.Entity["memory_limit"].(float64),
+				OrganizationGUID:        newOrgGUID,
+			}
+
+			quotaRez, err := restoreSpaceQuota(quotaJ)
+			if err != nil {
+				showWarning(fmt.Sprintf("Could not add quota %s, because: %s, organizations for this quota will be restored to the default quota", quotaJ.Name, err.Error()))
+			}
+			(*spaceQuotaGuids)[quotaItem.Metadata["guid"].(string)] = quotaRez
+		}
+	}
+}
+
 func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 
 	//map["old_guid"] = "new_guid"
@@ -395,24 +489,10 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 	}
 
 	quotaGuids := make(map[string]string)
+	spaceQuotaGuids := make(map[string]string)
 
 	if includeQuotaDefinitions {
-		quotas := util.RestoreQuotaResourceModels(backupObject.OrgQuotas)
-		for _, quotaItem := range *quotas {
-			quotaJ := quota{Name: quotaItem.Entity["name"].(string),
-				NonBasicServicesAllowed: quotaItem.Entity["non_basic_services_allowed"].(bool),
-				TotalServices:           quotaItem.Entity["total_services"].(float64),
-				TotalRoutes:             quotaItem.Entity["total_routes"].(float64),
-				MemoryLimit:             quotaItem.Entity["memory_limit"].(float64),
-				GUID:                    quotaItem.Metadata["guid"].(string),
-			}
-
-			quotaRez, err := restoreQuota(quotaJ)
-			if err != nil {
-				showWarning(fmt.Sprintf("Could not add quota %s, because: %s, organizations for this quota will be restored to the default quota", quotaJ.Name, err.Error()))
-			}
-			quotaGuids[quotaItem.Metadata["guid"].(string)] = quotaRez
-		}
+		restoreQuotasWithGuids(backupObject, &quotaGuids)
 	}
 	if orgs != nil {
 		for _, organization := range *orgs {
@@ -423,6 +503,10 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 				o = org{Name: organization.Entity["name"].(string)}
 			}
 			orgGUID := restoreOrg(o)
+
+			if includeQuotaDefinitions {
+				restoreSpaceQuotasWithGuids(backupObject, &spaceQuotaGuids, organization.Metadata["guid"].(string), orgGUID)
+			}
 
 			if orgGUID != "" {
 				if organization.Entity["auditors"] != nil {
@@ -457,158 +541,163 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 					}
 				}
 
-				spaces := organization.Entity["spaces"].(*[]*models.ResourceModel)
-				for _, sp := range *spaces {
-					s := space{Name: sp.Entity["name"].(string), OrganizationGUID: orgGUID}
-					spaceGUID := restoreSpace(s)
-					spaceGuids[sp.Metadata["guid"].(string)] = spaceGUID
+				if organization.Entity["spaces"] != nil {
+					spaces := organization.Entity["spaces"].(*[]*models.ResourceModel)
+					for _, sp := range *spaces {
+						s := space{Name: sp.Entity["name"].(string), OrganizationGUID: orgGUID}
+						if includeQuotaDefinitions && sp.Entity["space_quota_definition_guid"] != nil {
+							s.SpaceQuotaGUID = spaceQuotaGuids[sp.Entity["space_quota_definition_guid"].(string)]
+						}
+						spaceGUID := restoreSpace(s)
+						spaceGuids[sp.Metadata["guid"].(string)] = spaceGUID
 
-					if spaceGUID != "" {
-						if sp.Entity["auditors"] != nil {
-							auditors := sp.Entity["auditors"].(*[]*models.ResourceModel)
-							for _, auditor := range *auditors {
-								restoreUserRole(auditor.Entity["username"].(string), spaceGUID, spaceAudit)
+						if spaceGUID != "" {
+							if sp.Entity["auditors"] != nil {
+								auditors := sp.Entity["auditors"].(*[]*models.ResourceModel)
+								for _, auditor := range *auditors {
+									restoreUserRole(auditor.Entity["username"].(string), spaceGUID, spaceAudit)
+								}
+							}
+
+							if sp.Entity["developers"] != nil {
+								developers := sp.Entity["developers"].(*[]*models.ResourceModel)
+								for _, developer := range *developers {
+									restoreUserRole(developer.Entity["username"].(string), spaceGUID, spaceDev)
+								}
+							}
+
+							if sp.Entity["managers"] != nil {
+								managers := sp.Entity["managers"].(*[]*models.ResourceModel)
+								for _, manager := range *managers {
+									restoreUserRole(manager.Entity["username"].(string), spaceGUID, spaceManager)
+								}
 							}
 						}
 
-						if sp.Entity["developers"] != nil {
-							developers := sp.Entity["developers"].(*[]*models.ResourceModel)
-							for _, developer := range *developers {
-								restoreUserRole(developer.Entity["username"].(string), spaceGUID, spaceDev)
-							}
-						}
-
-						if sp.Entity["managers"] != nil {
-							managers := sp.Entity["managers"].(*[]*models.ResourceModel)
-							for _, manager := range *managers {
-								restoreUserRole(manager.Entity["username"].(string), spaceGUID, spaceManager)
-							}
-						}
-					}
-
-					//continue if there are no apps to restore
-					if sp.Entity["apps"] == nil {
-						continue
-					}
-
-					apps := sp.Entity["apps"].(*[]*models.ResourceModel)
-					packager := &util.CFPackager{
-						Cli:    CliConnection,
-						Writer: new(util.CFFileWriter),
-						Reader: new(util.CFFileReader),
-					}
-					appBits := util.NewCFDroplet(CliConnection, packager)
-
-					appsCount := len(*apps)
-					appIndex := 1
-
-					for _, application := range *apps {
-						stackName := application.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
-						stackGUID := getStackGUID(stackName)
-						if stackGUID == "" {
-							showWarning(fmt.Sprintf("Stack %s not found. Skipping app %s", stackName, application.Entity["name"].(string)))
+						//continue if there are no apps to restore
+						if sp.Entity["apps"] == nil {
 							continue
 						}
 
-						a := app{
-							Name:               application.Entity["name"].(string),
-							SpaceGUID:          spaceGUID,
-							Diego:              application.Entity["diego"],
-							Memory:             application.Entity["memory"],
-							Instances:          application.Entity["instances"],
-							DiskQuota:          application.Entity["disk_quota"],
-							StackGUID:          stackGUID,
-							Command:            application.Entity["command"],
-							Buildpack:          application.Entity["buildpack"],
-							HealthCheckType:    application.Entity["health_check_type"],
-							HealthCheckTimeout: application.Entity["health_check_timeout"],
-							EnableSSH:          application.Entity["enable_ssh"],
-							DockerImage:        application.Entity["docker_image"],
-							EnvironmentJSON:    application.Entity["environment_json"],
-							Ports:              application.Entity["ports"],
+						apps := sp.Entity["apps"].(*[]*models.ResourceModel)
+						packager := &util.CFPackager{
+							Cli:    CliConnection,
+							Writer: new(util.CFFileWriter),
+							Reader: new(util.CFFileReader),
 						}
+						appBits := util.NewCFDroplet(CliConnection, packager)
 
-						showInfo(fmt.Sprintf("Restoring App %s for space %s [%d/%d]", a.Name, sp.Entity["name"].(string), appIndex, appsCount))
+						appsCount := len(*apps)
+						appIndex := 1
 
-						appGUID := restoreApp(a)
-
-						if dockerImg, hit := application.Entity["docker_image"]; !hit || dockerImg == nil {
-							oldAppGUID := application.Metadata["guid"].(string)
-							appZipPath := filepath.Join(backupDir, backupAppBitsDir, oldAppGUID+".zip")
-							err = appBits.UploadDroplet(appGUID, appZipPath)
-							if err != nil {
-								showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", application.Entity["name"].(string), err.Error()))
+						for _, application := range *apps {
+							stackName := application.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
+							stackGUID := getStackGUID(stackName)
+							if stackGUID == "" {
+								showWarning(fmt.Sprintf("Stack %s not found. Skipping app %s", stackName, application.Entity["name"].(string)))
+								continue
 							}
-						}
 
-						state := application.Entity["state"].(string)
-						a.State = state
-						updateApp(appGUID, a)
+							a := app{
+								Name:               application.Entity["name"].(string),
+								SpaceGUID:          spaceGUID,
+								Diego:              application.Entity["diego"],
+								Memory:             application.Entity["memory"],
+								Instances:          application.Entity["instances"],
+								DiskQuota:          application.Entity["disk_quota"],
+								StackGUID:          stackGUID,
+								Command:            application.Entity["command"],
+								Buildpack:          application.Entity["buildpack"],
+								HealthCheckType:    application.Entity["health_check_type"],
+								HealthCheckTimeout: application.Entity["health_check_timeout"],
+								EnableSSH:          application.Entity["enable_ssh"],
+								DockerImage:        application.Entity["docker_image"],
+								EnvironmentJSON:    application.Entity["environment_json"],
+								Ports:              application.Entity["ports"],
+							}
 
-						boundRoute := false
-						if application.Entity["routes"] != nil {
-							routes := application.Entity["routes"].(*[]*models.ResourceModel)
-							for _, rt := range *routes {
-								domain := rt.Entity["domain"].(*models.ResourceModel)
+							showInfo(fmt.Sprintf("Restoring App %s for space %s [%d/%d]", a.Name, sp.Entity["name"].(string), appIndex, appsCount))
 
-								r := route{
-									SpaceGUID: spaceGUID,
-									Port:      rt.Entity["port"],
-									Path:      rt.Entity["path"],
-									Host:      rt.Entity["host"],
-								}
+							appGUID := restoreApp(a)
 
-								domainName := domain.Entity["name"].(string)
-
-								if domain.Entity["owning_organization_guid"] == nil {
-									domainGUID := getSharedDomainGUID(domainName)
-									if domainGUID == "" {
-										showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
-										continue
-									}
-									r.DomainGUID = domainGUID
-								} else {
-									domainGUID := getPrivateDomainGUID(domainName)
-									if domainGUID == "" {
-										showWarning(fmt.Sprintf("Could not find private domain %s", domainName))
-										continue
-									}
-									r.DomainGUID = domainGUID
-								}
-								routeGUID := createRoute(r)
-								showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
-								err = bindRoute(appGUID, routeGUID)
+							if dockerImg, hit := application.Entity["docker_image"]; !hit || dockerImg == nil {
+								oldAppGUID := application.Metadata["guid"].(string)
+								appZipPath := filepath.Join(backupDir, backupAppBitsDir, oldAppGUID+".zip")
+								err = appBits.UploadDroplet(appGUID, appZipPath)
 								if err != nil {
-									showWarning(fmt.Sprintf("Error binding route %s.%s to app %s: %s", r.Host, domainName, a.Name, err.Error()))
-								} else {
-									boundRoute = true
-									showInfo(fmt.Sprintf("Successfully bound route %s.%s to app %s", r.Host, domainName, a.Name))
+									showWarning(fmt.Sprintf("Could not upload app bits for app %s: %s", application.Entity["name"].(string), err.Error()))
 								}
 							}
-						}
 
-						if !boundRoute {
-							domain := getFirstSharedDomainGUID()
-							if domain == nil {
-								showWarning(fmt.Sprintf("Could not find any shared domain for app %s.", a.Name))
-							} else {
-								r := route{
-									SpaceGUID:  spaceGUID,
-									Host:       appGUID,
-									DomainGUID: domain.Metadata["guid"].(string),
-								}
-								routeGUID := createRoute(r)
-								showInfo(fmt.Sprintf("Binding new route to app %s", a.Name))
-								err = bindRoute(appGUID, routeGUID)
-								if err != nil {
-									showWarning(fmt.Sprintf("Error binding new route to app %s: %s", a.Name, err.Error()))
-								} else {
-									showInfo(fmt.Sprintf("Successfully bound new route to app %s", a.Name))
-								}
+							state := application.Entity["state"].(string)
+							a.State = state
+							updateApp(appGUID, a)
 
+							boundRoute := false
+							if application.Entity["routes"] != nil {
+								routes := application.Entity["routes"].(*[]*models.ResourceModel)
+								for _, rt := range *routes {
+									domain := rt.Entity["domain"].(*models.ResourceModel)
+
+									r := route{
+										SpaceGUID: spaceGUID,
+										Port:      rt.Entity["port"],
+										Path:      rt.Entity["path"],
+										Host:      rt.Entity["host"],
+									}
+
+									domainName := domain.Entity["name"].(string)
+
+									if domain.Entity["owning_organization_guid"] == nil {
+										domainGUID := getSharedDomainGUID(domainName)
+										if domainGUID == "" {
+											showWarning(fmt.Sprintf("Could not find shared domain %s", domainName))
+											continue
+										}
+										r.DomainGUID = domainGUID
+									} else {
+										domainGUID := getPrivateDomainGUID(domainName)
+										if domainGUID == "" {
+											showWarning(fmt.Sprintf("Could not find private domain %s", domainName))
+											continue
+										}
+										r.DomainGUID = domainGUID
+									}
+									routeGUID := createRoute(r)
+									showInfo(fmt.Sprintf("Binding route %s.%s to app %s", r.Host, domainName, a.Name))
+									err = bindRoute(appGUID, routeGUID)
+									if err != nil {
+										showWarning(fmt.Sprintf("Error binding route %s.%s to app %s: %s", r.Host, domainName, a.Name, err.Error()))
+									} else {
+										boundRoute = true
+										showInfo(fmt.Sprintf("Successfully bound route %s.%s to app %s", r.Host, domainName, a.Name))
+									}
+								}
 							}
+
+							if !boundRoute {
+								domain := getFirstSharedDomainGUID()
+								if domain == nil {
+									showWarning(fmt.Sprintf("Could not find any shared domain for app %s.", a.Name))
+								} else {
+									r := route{
+										SpaceGUID:  spaceGUID,
+										Host:       appGUID,
+										DomainGUID: domain.Metadata["guid"].(string),
+									}
+									routeGUID := createRoute(r)
+									showInfo(fmt.Sprintf("Binding new route to app %s", a.Name))
+									err = bindRoute(appGUID, routeGUID)
+									if err != nil {
+										showWarning(fmt.Sprintf("Error binding new route to app %s: %s", a.Name, err.Error()))
+									} else {
+										showInfo(fmt.Sprintf("Successfully bound new route to app %s", a.Name))
+									}
+
+								}
+							}
+							appIndex++
 						}
-						appIndex++
 					}
 				}
 			}
@@ -669,6 +758,17 @@ func deleteSecurityGroup(guid string) error {
 func deleteQuota(guid string) error {
 	_, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
 		"/v2/quota_definitions/"+guid, "-H", "Content-Type: application/x-www-form-urlencoded",
+		"-X", "DELETE")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteSpaceQuota(guid string) error {
+	_, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		"/v2/space_quota_definitions/"+guid, "-H", "Content-Type: application/x-www-form-urlencoded",
 		"-X", "DELETE")
 	if err != nil {
 		return err
