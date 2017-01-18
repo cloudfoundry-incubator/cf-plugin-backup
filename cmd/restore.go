@@ -438,22 +438,24 @@ func restoreQuotasWithGuids(backupObject *models.BackupModel,
 func restoreSpaceQuotasWithGuids(backupObject *models.BackupModel,
 	spaceQuotaGuids *map[string]string,
 	oldOrgGUID string, newOrgGUID string) {
-	quotas := util.RestoreSpaceQuotaResourceModels(backupObject.SpaceQuotas)
-	for _, quotaItem := range *quotas {
-		if quotaItem.Entity["organization_guid"].(string) == oldOrgGUID {
-			quotaJ := spacequota{Name: quotaItem.Entity["name"].(string),
-				NonBasicServicesAllowed: quotaItem.Entity["non_basic_services_allowed"].(bool),
-				TotalServices:           quotaItem.Entity["total_services"].(float64),
-				TotalRoutes:             quotaItem.Entity["total_routes"].(float64),
-				MemoryLimit:             quotaItem.Entity["memory_limit"].(float64),
-				OrganizationGUID:        newOrgGUID,
-			}
+	if backupObject.SpaceQuotas != nil {
+		quotas := util.RestoreSpaceQuotaResourceModels(backupObject.SpaceQuotas)
+		for _, quotaItem := range *quotas {
+			if quotaItem.Entity["organization_guid"].(string) == oldOrgGUID {
+				quotaJ := spacequota{Name: quotaItem.Entity["name"].(string),
+					NonBasicServicesAllowed: quotaItem.Entity["non_basic_services_allowed"].(bool),
+					TotalServices:           quotaItem.Entity["total_services"].(float64),
+					TotalRoutes:             quotaItem.Entity["total_routes"].(float64),
+					MemoryLimit:             quotaItem.Entity["memory_limit"].(float64),
+					OrganizationGUID:        newOrgGUID,
+				}
 
-			quotaRez, err := restoreSpaceQuota(quotaJ)
-			if err != nil {
-				showWarning(fmt.Sprintf("Could not add quota %s, because: %s, organizations for this quota will be restored to the default quota", quotaJ.Name, err.Error()))
+				quotaRez, err := restoreSpaceQuota(quotaJ)
+				if err != nil {
+					showWarning(fmt.Sprintf("Could not add quota %s, because: %s, organizations for this quota will be restored to the default quota", quotaJ.Name, err.Error()))
+				}
+				(*spaceQuotaGuids)[quotaItem.Metadata["guid"].(string)] = quotaRez
 			}
-			(*spaceQuotaGuids)[quotaItem.Metadata["guid"].(string)] = quotaRez
 		}
 	}
 }
