@@ -18,6 +18,7 @@ type ResourceModel struct {
 // BackupModel represents the backup json model
 type BackupModel struct {
 	OrgQuotas      interface{} `json:"org_quota_definitions"`
+	SpaceQuotas    interface{} `json:"space_quota_definitions"`
 	Organizations  interface{} `json:"organizations"`
 	SharedDomains  interface{} `json:"shared_domains"`
 	SecurityGroups interface{} `json:"security_groups"`
