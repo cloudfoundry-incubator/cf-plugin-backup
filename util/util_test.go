@@ -3,7 +3,7 @@ package util_test
 import (
 	"testing"
 
-	"github.com/hpcloud/cf-plugin-backup/util"
+	"github.com/SUSE/cf-plugin-backup/util"
 )
 
 func TestCheckUserScope_HasScope(t *testing.T) {

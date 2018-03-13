@@ -10,7 +10,7 @@ import (
 
 	"github.com/cloudfoundry/cli/plugin"
 	"github.com/deckarep/golang-set"
-	"github.com/hpcloud/cf-plugin-backup/models"
+	"github.com/SUSE/cf-plugin-backup/models"
 )
 
 const urlSuffix string = "_url"

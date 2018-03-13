@@ -8,14 +8,14 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/hpcloud/termui"
-	"github.com/hpcloud/termui/termpassword"
+	"github.com/SUSE/termui"
+	"github.com/SUSE/termui/termpassword"
 
 	"github.com/cloudfoundry/cli/plugin"
 
-	"github.com/hpcloud/cf-plugin-backup/cmd"
-	"github.com/hpcloud/cf-plugin-backup/commands"
-	"github.com/hpcloud/cf-plugin-backup/util"
+	"github.com/SUSE/cf-plugin-backup/cmd"
+	"github.com/SUSE/cf-plugin-backup/commands"
+	"github.com/SUSE/cf-plugin-backup/util"
 )
 
 var target string

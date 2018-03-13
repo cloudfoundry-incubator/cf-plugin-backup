@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/hpcloud/cf-plugin-backup/models"
-	"github.com/hpcloud/cf-plugin-backup/util"
-	"github.com/hpcloud/termui/termprogressbar"
+	"github.com/SUSE/cf-plugin-backup/models"
+	"github.com/SUSE/cf-plugin-backup/util"
+	"github.com/SUSE/termui/termprogressbar"
 )
 
 // snapshotCmd represents the snapshot command
