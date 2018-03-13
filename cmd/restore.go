@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hpcloud/cf-plugin-backup/models"
-	"github.com/hpcloud/cf-plugin-backup/util"
+	"github.com/SUSE/cf-plugin-backup/models"
+	"github.com/SUSE/cf-plugin-backup/util"
 
 	"github.com/spf13/cobra"
 )

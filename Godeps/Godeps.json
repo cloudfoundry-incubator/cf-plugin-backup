@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/hpcloud/cf-plugin-backup",
+	"ImportPath": "github.com/SUSE/cf-plugin-backup",
 	"GoVersion": "go1.6",
 	"GodepVersion": "v74",
 	"Packages": [
@@ -165,19 +165,19 @@
 			"Rev": "4de51957ef8d4aba6e285ddfc587633bbfc7c0e8"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui",
+			"ImportPath": "github.com/SUSE/termui",
 			"Rev": "6bc49a4ab6ae0acddda826f09df62d1fb7df97e5"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui/sigint",
+			"ImportPath": "github.com/SUSE/termui/sigint",
 			"Rev": "6bc49a4ab6ae0acddda826f09df62d1fb7df97e5"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui/termpassword",
+			"ImportPath": "github.com/SUSE/termui/termpassword",
 			"Rev": "6bc49a4ab6ae0acddda826f09df62d1fb7df97e5"
 		},
 		{
-			"ImportPath": "github.com/hpcloud/termui/termprogressbar",
+			"ImportPath": "github.com/SUSE/termui/termprogressbar",
 			"Rev": "6bc49a4ab6ae0acddda826f09df62d1fb7df97e5"
 		},
 		{

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hpcloud/cf-plugin-backup/models"
-	"github.com/hpcloud/cf-plugin-backup/util"
+	"github.com/SUSE/cf-plugin-backup/models"
+	"github.com/SUSE/cf-plugin-backup/util"
 )
 
 type CCApiMock struct {
