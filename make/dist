@@ -7,10 +7,11 @@ set -o errexit
 . make/include/colors.sh
 . make/include/versioning.sh
 
-echo "${OK_COLOR}==> Disting all${NO_COLOR}"; \
-for OS in ${OSES}; do \
+printf "%b==> Disting all%b\n" "${OK_COLOR}" "${NO_COLOR}"
+
+for OS in ${OSES}; do
   rm -rf build/cf-plugin-backup
   mkdir build/cf-plugin-backup
   cp build/${OS}-amd64/* build/cf-plugin-backup/
   tar czf ${APP_VERSION}.${OS}-amd64.tgz --owner=0 --group=0 --numeric-owner -C build cf-plugin-backup
-done; 
+done

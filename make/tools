@@ -8,7 +8,7 @@ set -o errexit
 
 . make/include/colors.sh
 
-echo "${OK_COLOR}==> Installing tools${NO_COLOR}"
+printf "%b==> Installing tools%b\n" "${OK_COLOR}" "${NO_COLOR}"
 #Great tools to have, and used in the build file
 go get -u golang.org/x/tools/cmd/goimports
 go get -u golang.org/x/tools/cmd/cover
