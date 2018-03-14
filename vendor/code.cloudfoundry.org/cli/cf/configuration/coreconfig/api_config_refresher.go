@@ -1,8 +1,6 @@
 package coreconfig
 
 import (
-	"fmt"
-	"regexp"
 	"strings"
 
 	. "code.cloudfoundry.org/cli/cf/i18n"
@@ -36,31 +34,14 @@ func (a APIConfigRefresher) Refresh() (Warning, error) {
 	a.Config.SetSSHOAuthClient(ccInfo.SSHOAuthClient)
 	a.Config.SetMinCLIVersion(ccInfo.MinCLIVersion)
 	a.Config.SetMinRecommendedCLIVersion(ccInfo.MinRecommendedCLIVersion)
-	a.Config.SetLoggregatorEndpoint(a.LoggregatorEndpoint(ccInfo, endpoint))
 
-	//* 3/5/15: loggregator endpoint will be renamed to doppler eventually,
-	//          we just have to use the loggregator endpoint as doppler for now
-	a.Config.SetDopplerEndpoint(strings.Replace(a.Config.LoggregatorEndpoint(), "loggregator", "doppler", 1))
+	a.Config.SetDopplerEndpoint(ccInfo.DopplerEndpoint)
 	a.Config.SetRoutingAPIEndpoint(ccInfo.RoutingAPIEndpoint)
 
 	if !strings.HasPrefix(endpoint, "https://") {
 		return new(insecureWarning), nil
 	}
 	return nil, nil
-}
-
-func (a APIConfigRefresher) LoggregatorEndpoint(ccInfo *CCInfo, endpoint string) string {
-	if ccInfo.LoggregatorEndpoint == "" {
-		var endpointDomainRegex = regexp.MustCompile(`^http(s?)://[^\.]+\.([^:]+)`)
-
-		matches := endpointDomainRegex.FindStringSubmatch(endpoint)
-		url := fmt.Sprintf("ws%s://loggregator.%s", matches[1], matches[2])
-		if url[0:3] == "wss" {
-			return url + ":443"
-		}
-		return url + ":80"
-	}
-	return ccInfo.LoggregatorEndpoint
 }
 
 type Warning interface {

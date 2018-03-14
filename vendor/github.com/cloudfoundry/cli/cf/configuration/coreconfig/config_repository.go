@@ -6,21 +6,23 @@ import (
 
 	"code.cloudfoundry.org/cli/cf/configuration"
 	"code.cloudfoundry.org/cli/cf/models"
+	"code.cloudfoundry.org/cli/version"
 	"github.com/blang/semver"
 )
 
 type ConfigRepository struct {
-	data      *Data
-	mutex     *sync.RWMutex
-	initOnce  *sync.Once
-	persistor configuration.Persistor
-	onError   func(error)
+	CFCLIVersion string
+	data         *Data
+	mutex        *sync.RWMutex
+	initOnce     *sync.Once
+	persistor    configuration.Persistor
+	onError      func(error)
 }
 
 type CCInfo struct {
 	APIVersion               string `json:"api_version"`
 	AuthorizationEndpoint    string `json:"authorization_endpoint"`
-	LoggregatorEndpoint      string `json:"logging_endpoint"`
+	DopplerEndpoint          string `json:"doppler_logging_endpoint"`
 	MinCLIVersion            string `json:"min_cli_version"`
 	MinRecommendedCLIVersion string `json:"min_recommended_cli_version"`
 	SSHOAuthClient           string `json:"app_ssh_oauth_client"`
@@ -59,11 +61,12 @@ type Reader interface {
 	HasAPIEndpoint() bool
 
 	AuthenticationEndpoint() string
-	LoggregatorEndpoint() string
 	DopplerEndpoint() string
 	UaaEndpoint() string
 	RoutingAPIEndpoint() string
 	AccessToken() string
+	UAAOAuthClient() string
+	UAAOAuthClientSecret() string
 	SSHOAuthClient() string
 	RefreshToken() string
 
@@ -82,6 +85,7 @@ type Reader interface {
 	IsMinCLIVersion(string) bool
 	MinCLIVersion() string
 	MinRecommendedCLIVersion() string
+	CLIVersion() string
 
 	AsyncTimeout() uint
 	Trace() string
@@ -98,26 +102,30 @@ type Reader interface {
 type ReadWriter interface {
 	Reader
 	ClearSession()
+	SetAccessToken(string)
 	SetAPIEndpoint(string)
 	SetAPIVersion(string)
+	SetAsyncTimeout(uint)
+	SetAuthenticationEndpoint(string)
+	SetCLIVersion(string)
+	SetColorEnabled(string)
+	SetDopplerEndpoint(string)
+	SetLocale(string)
 	SetMinCLIVersion(string)
 	SetMinRecommendedCLIVersion(string)
-	SetAuthenticationEndpoint(string)
-	SetLoggregatorEndpoint(string)
-	SetDopplerEndpoint(string)
-	SetUaaEndpoint(string)
-	SetRoutingAPIEndpoint(string)
-	SetAccessToken(string)
-	SetSSHOAuthClient(string)
-	SetRefreshToken(string)
 	SetOrganizationFields(models.OrganizationFields)
-	SetSpaceFields(models.SpaceFields)
-	SetSSLDisabled(bool)
-	SetAsyncTimeout(uint)
-	SetTrace(string)
-	SetColorEnabled(string)
-	SetLocale(string)
 	SetPluginRepo(models.PluginRepo)
+	SetRefreshToken(string)
+	SetRoutingAPIEndpoint(string)
+	SetSpaceFields(models.SpaceFields)
+	SetSSHOAuthClient(string)
+	SetSSLDisabled(bool)
+	SetTrace(string)
+	SetUaaEndpoint(string)
+	SetUAAGrantType(string)
+	SetUAAOAuthClient(string)
+	SetUAAOAuthClientSecret(string)
+	UAAGrantType() string
 	UnSetPluginRepo(int)
 }
 
@@ -184,25 +192,12 @@ func (c *ConfigRepository) AuthenticationEndpoint() (authEndpoint string) {
 	return
 }
 
-func (c *ConfigRepository) LoggregatorEndpoint() (logEndpoint string) {
+func (c *ConfigRepository) DopplerEndpoint() (dopplerEndpoint string) {
 	c.read(func() {
-		logEndpoint = c.data.LoggregatorEndPoint
+		dopplerEndpoint = c.data.DopplerEndPoint
 	})
+
 	return
-}
-
-func (c *ConfigRepository) DopplerEndpoint() (logEndpoint string) {
-	//revert this in v7.0, once CC advertise doppler endpoint, and
-	//everyone has migrated from loggregator to doppler
-
-	// c.read(func() {
-	// 	logEndpoint = c.data.DopplerEndPoint
-	// })
-	c.read(func() {
-		logEndpoint = c.data.LoggregatorEndPoint
-	})
-
-	return strings.Replace(logEndpoint, "loggregator", "doppler", 1)
 }
 
 func (c *ConfigRepository) UaaEndpoint() (uaaEndpoint string) {
@@ -219,11 +214,14 @@ func (c *ConfigRepository) RoutingAPIEndpoint() (routingAPIEndpoint string) {
 	return
 }
 
-func (c *ConfigRepository) APIEndpoint() (apiEndpoint string) {
+func (c *ConfigRepository) APIEndpoint() string {
+	var apiEndpoint string
 	c.read(func() {
 		apiEndpoint = c.data.Target
 	})
-	return
+	apiEndpoint = strings.TrimRight(apiEndpoint, "/")
+
+	return apiEndpoint
 }
 
 func (c *ConfigRepository) HasAPIEndpoint() (hasEndpoint bool) {
@@ -236,6 +234,20 @@ func (c *ConfigRepository) HasAPIEndpoint() (hasEndpoint bool) {
 func (c *ConfigRepository) AccessToken() (accessToken string) {
 	c.read(func() {
 		accessToken = c.data.AccessToken
+	})
+	return
+}
+
+func (c *ConfigRepository) UAAOAuthClient() (clientID string) {
+	c.read(func() {
+		clientID = c.data.UAAOAuthClient
+	})
+	return
+}
+
+func (c *ConfigRepository) UAAOAuthClientSecret() (clientID string) {
+	c.read(func() {
+		clientID = c.data.UAAOAuthClientSecret
 	})
 	return
 }
@@ -317,6 +329,19 @@ func (c *ConfigRepository) IsSSLDisabled() (isSSLDisabled bool) {
 	return
 }
 
+// SetCLIVersion should only be used in testing
+func (c *ConfigRepository) SetCLIVersion(v string) {
+	c.CFCLIVersion = v
+}
+
+func (c *ConfigRepository) CLIVersion() string {
+	if c.CFCLIVersion == "" {
+		return version.VersionString()
+	} else {
+		return c.CFCLIVersion
+	}
+}
+
 func (c *ConfigRepository) IsMinAPIVersion(requiredVersion semver.Version) bool {
 	var apiVersion string
 	c.read(func() {
@@ -330,8 +355,8 @@ func (c *ConfigRepository) IsMinAPIVersion(requiredVersion semver.Version) bool 
 	return actualVersion.GTE(requiredVersion)
 }
 
-func (c *ConfigRepository) IsMinCLIVersion(version string) bool {
-	if version == "BUILT_FROM_SOURCE" {
+func (c *ConfigRepository) IsMinCLIVersion(checkVersion string) bool {
+	if checkVersion == version.DefaultVersion {
 		return true
 	}
 	var minCLIVersion string
@@ -342,7 +367,7 @@ func (c *ConfigRepository) IsMinCLIVersion(version string) bool {
 		return true
 	}
 
-	actualVersion, err := semver.Make(version)
+	actualVersion, err := semver.Make(checkVersion)
 	if err != nil {
 		return false
 	}
@@ -443,12 +468,6 @@ func (c *ConfigRepository) SetAuthenticationEndpoint(endpoint string) {
 	})
 }
 
-func (c *ConfigRepository) SetLoggregatorEndpoint(endpoint string) {
-	c.write(func() {
-		c.data.LoggregatorEndPoint = endpoint
-	})
-}
-
 func (c *ConfigRepository) SetDopplerEndpoint(endpoint string) {
 	c.write(func() {
 		c.data.DopplerEndPoint = endpoint
@@ -470,6 +489,18 @@ func (c *ConfigRepository) SetRoutingAPIEndpoint(routingAPIEndpoint string) {
 func (c *ConfigRepository) SetAccessToken(token string) {
 	c.write(func() {
 		c.data.AccessToken = token
+	})
+}
+
+func (c *ConfigRepository) SetUAAOAuthClient(clientID string) {
+	c.write(func() {
+		c.data.UAAOAuthClient = clientID
+	})
+}
+
+func (c *ConfigRepository) SetUAAOAuthClientSecret(clientID string) {
+	c.write(func() {
+		c.data.UAAOAuthClientSecret = clientID
 	})
 }
 
@@ -536,5 +567,19 @@ func (c *ConfigRepository) SetPluginRepo(repo models.PluginRepo) {
 func (c *ConfigRepository) UnSetPluginRepo(index int) {
 	c.write(func() {
 		c.data.PluginRepos = append(c.data.PluginRepos[:index], c.data.PluginRepos[index+1:]...)
+	})
+}
+
+func (c *ConfigRepository) UAAGrantType() string {
+	grantType := ""
+	c.read(func() {
+		grantType = c.data.UAAGrantType
+	})
+	return grantType
+}
+
+func (c *ConfigRepository) SetUAAGrantType(grantType string) {
+	c.write(func() {
+		c.data.UAAGrantType = grantType
 	})
 }
