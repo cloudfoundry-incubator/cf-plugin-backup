@@ -51,12 +51,12 @@ func (application Application) CalculatedHealthCheckEndpoint() string {
 
 // StagingCompleted returns true if the application has been staged.
 func (application Application) StagingCompleted() bool {
-	return application.PackageState == ccv2.ApplicationPackageStaged
+	return application.PackageState == constant.ApplicationPackageStaged
 }
 
 // StagingFailed returns true if staging the application failed.
 func (application Application) StagingFailed() bool {
-	return application.PackageState == ccv2.ApplicationPackageFailed
+	return application.PackageState == constant.ApplicationPackageFailed
 }
 
 // StagingFailedMessage returns the verbose description of the failure or
@@ -77,12 +77,12 @@ func (application Application) StagingFailedNoAppDetected() bool {
 
 // Started returns true when the application is started.
 func (application Application) Started() bool {
-	return application.State == ccv2.ApplicationStarted
+	return application.State == constant.ApplicationStarted
 }
 
 // Stopped returns true when the application is stopped.
 func (application Application) Stopped() bool {
-	return application.State == ccv2.ApplicationStopped
+	return application.State == constant.ApplicationStopped
 }
 
 func (application Application) String() string {
@@ -132,14 +132,14 @@ func (actor Actor) GetApplication(guid string) (Application, Warnings, error) {
 // the space.
 func (actor Actor) GetApplicationByNameAndSpace(name string, spaceGUID string) (Application, Warnings, error) {
 	app, warnings, err := actor.CloudControllerClient.GetApplications(
-		ccv2.QQuery{
-			Filter:   ccv2.NameFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.NameFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{name},
 		},
-		ccv2.QQuery{
-			Filter:   ccv2.SpaceGUIDFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.SpaceGUIDFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{spaceGUID},
 		},
 	)
@@ -160,9 +160,9 @@ func (actor Actor) GetApplicationByNameAndSpace(name string, spaceGUID string) (
 // GetApplicationsBySpace returns all applications in a space.
 func (actor Actor) GetApplicationsBySpace(spaceGUID string) ([]Application, Warnings, error) {
 	ccv2Apps, warnings, err := actor.CloudControllerClient.GetApplications(
-		ccv2.QQuery{
-			Filter:   ccv2.SpaceGUIDFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.SpaceGUIDFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{spaceGUID},
 		},
 	)
@@ -231,8 +231,8 @@ func (actor Actor) SetApplicationHealthCheckTypeByNameAndSpace(name string, spac
 
 // StartApplication restarts a given application. If already stopped, no stop
 // call will be sent.
-func (actor Actor) StartApplication(app Application, client NOAAClient, config Config) (<-chan *LogMessage, <-chan error, <-chan ApplicationStateChange, <-chan string, <-chan error) {
-	messages, logErrs := actor.GetStreamingLogs(app.GUID, client, config)
+func (actor Actor) StartApplication(app Application, client NOAAClient) (<-chan *LogMessage, <-chan error, <-chan ApplicationStateChange, <-chan string, <-chan error) {
+	messages, logErrs := actor.GetStreamingLogs(app.GUID, client)
 
 	appState := make(chan ApplicationStateChange)
 	allWarnings := make(chan string)
@@ -243,13 +243,13 @@ func (actor Actor) StartApplication(app Application, client NOAAClient, config C
 		defer close(errs)
 		defer client.Close() // automatic close to prevent stale clients
 
-		if app.PackageState != ccv2.ApplicationPackageStaged {
+		if app.PackageState != constant.ApplicationPackageStaged {
 			appState <- ApplicationStateStaging
 		}
 
 		updatedApp, warnings, err := actor.CloudControllerClient.UpdateApplication(ccv2.Application{
 			GUID:  app.GUID,
-			State: ccv2.ApplicationStarted,
+			State: constant.ApplicationStarted,
 		})
 
 		for _, warning := range warnings {
@@ -260,7 +260,7 @@ func (actor Actor) StartApplication(app Application, client NOAAClient, config C
 			return
 		}
 
-		actor.waitForApplicationStageAndStart(Application(updatedApp), client, config, appState, allWarnings, errs)
+		actor.waitForApplicationStageAndStart(Application(updatedApp), client, appState, allWarnings, errs)
 	}()
 
 	return messages, logErrs, appState, allWarnings, errs
@@ -268,8 +268,8 @@ func (actor Actor) StartApplication(app Application, client NOAAClient, config C
 
 // RestartApplication restarts a given application. If already stopped, no stop
 // call will be sent.
-func (actor Actor) RestartApplication(app Application, client NOAAClient, config Config) (<-chan *LogMessage, <-chan error, <-chan ApplicationStateChange, <-chan string, <-chan error) {
-	messages, logErrs := actor.GetStreamingLogs(app.GUID, client, config)
+func (actor Actor) RestartApplication(app Application, client NOAAClient) (<-chan *LogMessage, <-chan error, <-chan ApplicationStateChange, <-chan string, <-chan error) {
+	messages, logErrs := actor.GetStreamingLogs(app.GUID, client)
 
 	appState := make(chan ApplicationStateChange)
 	allWarnings := make(chan string)
@@ -284,7 +284,7 @@ func (actor Actor) RestartApplication(app Application, client NOAAClient, config
 			appState <- ApplicationStateStopping
 			updatedApp, warnings, err := actor.CloudControllerClient.UpdateApplication(ccv2.Application{
 				GUID:  app.GUID,
-				State: ccv2.ApplicationStopped,
+				State: constant.ApplicationStopped,
 			})
 			for _, warning := range warnings {
 				allWarnings <- warning
@@ -296,12 +296,12 @@ func (actor Actor) RestartApplication(app Application, client NOAAClient, config
 			app = Application(updatedApp)
 		}
 
-		if app.PackageState != ccv2.ApplicationPackageStaged {
+		if app.PackageState != constant.ApplicationPackageStaged {
 			appState <- ApplicationStateStaging
 		}
 		updatedApp, warnings, err := actor.CloudControllerClient.UpdateApplication(ccv2.Application{
 			GUID:  app.GUID,
-			State: ccv2.ApplicationStarted,
+			State: constant.ApplicationStarted,
 		})
 
 		for _, warning := range warnings {
@@ -312,7 +312,7 @@ func (actor Actor) RestartApplication(app Application, client NOAAClient, config
 			return
 		}
 
-		actor.waitForApplicationStageAndStart(Application(updatedApp), client, config, appState, allWarnings, errs)
+		actor.waitForApplicationStageAndStart(Application(updatedApp), client, appState, allWarnings, errs)
 	}()
 
 	return messages, logErrs, appState, allWarnings, errs
@@ -320,8 +320,8 @@ func (actor Actor) RestartApplication(app Application, client NOAAClient, config
 
 // RestageApplication restarts a given application. If already stopped, no stop
 // call will be sent.
-func (actor Actor) RestageApplication(app Application, client NOAAClient, config Config) (<-chan *LogMessage, <-chan error, <-chan ApplicationStateChange, <-chan string, <-chan error) {
-	messages, logErrs := actor.GetStreamingLogs(app.GUID, client, config)
+func (actor Actor) RestageApplication(app Application, client NOAAClient) (<-chan *LogMessage, <-chan error, <-chan ApplicationStateChange, <-chan string, <-chan error) {
+	messages, logErrs := actor.GetStreamingLogs(app.GUID, client)
 
 	appState := make(chan ApplicationStateChange)
 	allWarnings := make(chan string)
@@ -345,7 +345,7 @@ func (actor Actor) RestageApplication(app Application, client NOAAClient, config
 			return
 		}
 
-		actor.waitForApplicationStageAndStart(Application(restagedApp), client, config, appState, allWarnings, errs)
+		actor.waitForApplicationStageAndStart(Application(restagedApp), client, appState, allWarnings, errs)
 	}()
 
 	return messages, logErrs, appState, allWarnings, errs
@@ -357,8 +357,8 @@ func (actor Actor) UpdateApplication(application Application) (Application, Warn
 	return Application(app), Warnings(warnings), err
 }
 
-func (actor Actor) pollStaging(app Application, config Config, allWarnings chan<- string) error {
-	timeout := time.Now().Add(config.StagingTimeout())
+func (actor Actor) pollStaging(app Application, allWarnings chan<- string) error {
+	timeout := time.Now().Add(actor.Config.StagingTimeout())
 	for time.Now().Before(timeout) {
 		currentApplication, warnings, err := actor.GetApplication(app.GUID)
 		for _, warning := range warnings {
@@ -376,13 +376,13 @@ func (actor Actor) pollStaging(app Application, config Config, allWarnings chan<
 			}
 			return actionerror.StagingFailedError{Reason: currentApplication.StagingFailedMessage()}
 		}
-		time.Sleep(config.PollingInterval())
+		time.Sleep(actor.Config.PollingInterval())
 	}
-	return actionerror.StagingTimeoutError{AppName: app.Name, Timeout: config.StagingTimeout()}
+	return actionerror.StagingTimeoutError{AppName: app.Name, Timeout: actor.Config.StagingTimeout()}
 }
 
-func (actor Actor) pollStartup(app Application, config Config, allWarnings chan<- string) error {
-	timeout := time.Now().Add(config.StartupTimeout())
+func (actor Actor) pollStartup(app Application, allWarnings chan<- string) error {
+	timeout := time.Now().Add(actor.Config.StartupTimeout())
 	for time.Now().Before(timeout) {
 		currentInstances, warnings, err := actor.GetApplicationInstancesByApplication(app.GUID)
 		for _, warning := range warnings {
@@ -402,14 +402,14 @@ func (actor Actor) pollStartup(app Application, config Config, allWarnings chan<
 				return actionerror.ApplicationInstanceFlappingError{Name: app.Name}
 			}
 		}
-		time.Sleep(config.PollingInterval())
+		time.Sleep(actor.Config.PollingInterval())
 	}
 
 	return actionerror.StartupTimeoutError{Name: app.Name}
 }
 
-func (actor Actor) waitForApplicationStageAndStart(app Application, client NOAAClient, config Config, appState chan ApplicationStateChange, allWarnings chan string, errs chan error) {
-	err := actor.pollStaging(app, config, allWarnings)
+func (actor Actor) waitForApplicationStageAndStart(app Application, client NOAAClient, appState chan ApplicationStateChange, allWarnings chan string, errs chan error) {
+	err := actor.pollStaging(app, allWarnings)
 	if err != nil {
 		errs <- err
 		return
@@ -422,7 +422,7 @@ func (actor Actor) waitForApplicationStageAndStart(app Application, client NOAAC
 	client.Close() // Explicit close to stop logs from displaying on the screen
 	appState <- ApplicationStateStarting
 
-	err = actor.pollStartup(app, config, allWarnings)
+	err = actor.pollStartup(app, allWarnings)
 	if err != nil {
 		errs <- err
 	}

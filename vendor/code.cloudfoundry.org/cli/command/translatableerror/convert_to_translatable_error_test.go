@@ -138,6 +138,10 @@ var _ = Describe("ConvertToTranslatableError", func() {
 			actionerror.OrganizationNotFoundError{Name: "some-org"},
 			OrganizationNotFoundError{Name: "some-org"}),
 
+		Entry("actionerror.PasswordGrantTypeLogoutRequiredError -> PasswordGrantTypeLogoutRequiredError",
+			actionerror.PasswordGrantTypeLogoutRequiredError{},
+			PasswordGrantTypeLogoutRequiredError{}),
+
 		Entry("actionerror.PluginCommandConflictError -> PluginCommandConflictError",
 			actionerror.PluginCommandsConflictError{
 				PluginName:     "some-plugin",
@@ -203,6 +207,14 @@ var _ = Describe("ConvertToTranslatableError", func() {
 		Entry("actionerror.ServiceInstanceNotFoundError -> ServiceInstanceNotFoundError",
 			actionerror.ServiceInstanceNotFoundError{Name: "some-service-instance"},
 			ServiceInstanceNotFoundError{Name: "some-service-instance"}),
+
+		Entry("actionerror.ServiceInstanceNotShareableError -> ServiceInstanceNotShareableError",
+			actionerror.ServiceInstanceNotShareableError{
+				FeatureFlagEnabled:          true,
+				ServiceBrokerSharingEnabled: false},
+			ServiceInstanceNotShareableError{
+				FeatureFlagEnabled:          true,
+				ServiceBrokerSharingEnabled: false}),
 
 		Entry("actionerror.SharedServiceInstanceNotFoundError -> SharedServiceInstanceNotFoundError",
 			actionerror.SharedServiceInstanceNotFoundError{},

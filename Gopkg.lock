@@ -11,14 +11,11 @@
   name = "code.cloudfoundry.org/cli"
   packages = [
     "actor/actionerror",
-    "api/cloudcontroller",
     "api/cloudcontroller/ccerror",
-    "api/cloudcontroller/ccv2",
     "api/cloudcontroller/ccv2/constant",
-    "api/cloudcontroller/ccv2/internal",
-    "api/cloudcontroller/ccversion",
     "api/plugin/pluginerror",
     "api/uaa",
+    "api/uaa/constant",
     "api/uaa/internal",
     "cf",
     "cf/configuration",
@@ -40,9 +37,9 @@
     "util/ui",
     "version"
   ]
-  revision = "bbdf81482f6cfa6281b1937f23cea3162b976351"
+  revision = "2af0851c1f20323abc6da2f2d5ece0dec80ccce5"
   source = "github.com/cloudfoundry/cli"
-  version = "v6.34.1"
+  version = "v6.35.0"
 
 [[projects]]
   name = "github.com/BurntSushi/toml"
@@ -77,12 +74,6 @@
   packages = ["."]
   revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
   version = "v3.5.1"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/bmizerany/pat"
-  packages = ["."]
-  revision = "6226ea591a40176dd3ff9cd8eff81ed6ca721a00"
 
 [[projects]]
   name = "github.com/cheggaaa/pb"
@@ -202,12 +193,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/tedsuo/rata"
-  packages = ["."]
-  revision = "07d200713958d05692ac35aa8b5f1949342fee80"
-
-[[projects]]
-  branch = "master"
   name = "github.com/vito/go-interact"
   packages = [
     "interact",
@@ -244,14 +229,15 @@
   revision = "4a13a3860a6e13b9c8d09ceeb19f19a4b68c1a4e"
 
 [[projects]]
+  branch = "off_by_one_scanner_error_line"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "fd70c8694ac38cc10ed519e30c6309aa9cb7bbd9"
+  source = "github.com/vitreuz/yaml"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d3842e5fe8de076c491b30556e0419f09af9cf5e98e8e084580c847c91d15935"
+  inputs-digest = "86507c46830fe5a2295977719b4b536905fd75cb4c6a3f9a4b8249146c96823a"
   solver-name = "gps-cdcl"
   solver-version = 1

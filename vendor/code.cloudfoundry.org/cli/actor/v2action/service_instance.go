@@ -1,15 +1,22 @@
 package v2action
 
 import (
-	"strings"
-
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 )
 
 // ServiceInstance represents an instance of a service.
 type ServiceInstance ccv2.ServiceInstance
+
+func (instance ServiceInstance) IsManaged() bool {
+	return ccv2.ServiceInstance(instance).Managed()
+}
+
+func (instance ServiceInstance) IsUserProvided() bool {
+	return ccv2.ServiceInstance(instance).UserProvided()
+}
 
 func (actor Actor) GetServiceInstance(guid string) (ServiceInstance, Warnings, error) {
 	instance, warnings, err := actor.CloudControllerClient.GetServiceInstance(guid)
@@ -23,9 +30,9 @@ func (actor Actor) GetServiceInstanceByNameAndSpace(name string, spaceGUID strin
 	serviceInstances, warnings, err := actor.CloudControllerClient.GetSpaceServiceInstances(
 		spaceGUID,
 		true,
-		ccv2.QQuery{
-			Filter:   ccv2.NameFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.NameFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{name},
 		})
 
@@ -44,9 +51,9 @@ func (actor Actor) GetServiceInstanceByNameAndSpace(name string, spaceGUID strin
 
 func (actor Actor) GetServiceInstancesByApplication(appGUID string) ([]ServiceInstance, Warnings, error) {
 	var allWarnings Warnings
-	bindings, apiWarnings, err := actor.CloudControllerClient.GetServiceBindings(ccv2.QQuery{
-		Filter:   ccv2.AppGUIDFilter,
-		Operator: ccv2.EqualOperator,
+	bindings, apiWarnings, err := actor.CloudControllerClient.GetServiceBindings(ccv2.Filter{
+		Type:     constant.AppGUIDFilter,
+		Operator: constant.EqualOperator,
 		Values:   []string{appGUID},
 	})
 	allWarnings = append(allWarnings, apiWarnings...)
@@ -81,27 +88,4 @@ func (actor Actor) GetServiceInstancesBySpace(spaceGUID string) ([]ServiceInstan
 	}
 
 	return serviceInstances, Warnings(warnings), nil
-}
-
-func (actor Actor) GetSharedToSpaceGUID(serviceInstanceName string, sourceSpaceGUID string, sharedToOrgName string, sharedToSpaceName string) (string, Warnings, error) {
-	serviceInstance, allWarnings, err := actor.GetServiceInstanceByNameAndSpace(serviceInstanceName, sourceSpaceGUID)
-
-	if err != nil {
-		return "", allWarnings, err
-	}
-
-	sharedTos, warnings, err := actor.GetServiceInstanceSharedTosByServiceInstance(serviceInstance.GUID)
-	allWarnings = append(allWarnings, warnings...)
-
-	if err != nil {
-		return "", allWarnings, err
-	}
-
-	for _, sharedTo := range sharedTos {
-		if strings.EqualFold(sharedTo.SpaceName, sharedToSpaceName) && strings.EqualFold(sharedTo.OrganizationName, sharedToOrgName) {
-			return sharedTo.SpaceGUID, allWarnings, nil
-		}
-	}
-
-	return "", allWarnings, actionerror.ServiceInstanceNotSharedToSpaceError{ServiceInstanceName: serviceInstanceName}
 }

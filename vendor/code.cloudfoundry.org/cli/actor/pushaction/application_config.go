@@ -6,7 +6,6 @@ import (
 
 	"code.cloudfoundry.org/cli/actor/sharedaction"
 	"code.cloudfoundry.org/cli/actor/v2action"
-	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	"code.cloudfoundry.org/cli/util/manifest"
 	log "github.com/sirupsen/logrus"
@@ -125,7 +124,7 @@ func (actor Actor) configureRoutes(manifestApp manifest.Application, orgGUID str
 		routes, warnings, err := actor.CalculateRoutes(manifestApp.Routes, orgGUID, spaceGUID, config.CurrentRoutes)
 		config.DesiredRoutes = routes
 		return config, warnings, err
-	case manifestApp.RandomRoute && len(config.CurrentRoutes) > 0:
+	case len(config.CurrentRoutes) > 0 && (manifestApp.RandomRoute || manifestApp.Domain == ""):
 		config.DesiredRoutes = config.CurrentRoutes
 		return config, nil, nil
 	case manifestApp.RandomRoute:
@@ -263,7 +262,7 @@ func (Actor) overrideApplicationProperties(application Application, manifest man
 	}
 
 	if noStart {
-		application.State = ccv2.ApplicationStopped
+		application.State = constant.ApplicationStopped
 	}
 
 	if len(manifest.EnvironmentVariables) > 0 {

@@ -10,9 +10,19 @@ import (
 
 // Organization represents a Cloud Controller Organization.
 type Organization struct {
-	GUID                        string
-	Name                        string
-	QuotaDefinitionGUID         string
+
+	// GUID is the unique Organization identifier.
+	GUID string
+
+	// Name is the organization's name.
+	Name string
+
+	// QuotaDefinitionGUID is unique identifier of the quota assigned to this
+	// organization.
+	QuotaDefinitionGUID string
+
+	// DefaultIsolationSegmentGUID is the unique identifier of the isolation
+	// segment this organization is tagged with.
 	DefaultIsolationSegmentGUID string
 }
 
@@ -40,7 +50,7 @@ func (org *Organization) UnmarshalJSON(data []byte) error {
 //go:generate go run $GOPATH/src/code.cloudfoundry.org/cli/util/codegen/generate.go Organization codetemplates/delete_async_by_guid.go.template delete_organization.go
 //go:generate go run $GOPATH/src/code.cloudfoundry.org/cli/util/codegen/generate.go Organization codetemplates/delete_async_by_guid_test.go.template delete_organization_test.go
 
-// GetOrganization returns an Organization associated with the provided guid.
+// GetOrganization returns an Organization associated with the provided GUID.
 func (client *Client) GetOrganization(guid string) (Organization, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetOrganizationRequest,
@@ -60,9 +70,9 @@ func (client *Client) GetOrganization(guid string) (Organization, Warnings, erro
 }
 
 // GetOrganizations returns back a list of Organizations based off of the
-// provided queries.
-func (client *Client) GetOrganizations(queries ...QQuery) ([]Organization, Warnings, error) {
-	allQueries := FormatQueryParameters(queries)
+// provided filters.
+func (client *Client) GetOrganizations(filters ...Filter) ([]Organization, Warnings, error) {
+	allQueries := ConvertFilterParameters(filters)
 	allQueries.Add("order-by", "name")
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetOrganizationsRequest,

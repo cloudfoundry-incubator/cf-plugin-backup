@@ -3,6 +3,7 @@ package v2action
 import (
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 )
 
 // Space represents a CLI Space
@@ -23,7 +24,7 @@ func (actor Actor) DeleteSpaceByNameAndOrganizationName(spaceName string, orgNam
 		return allWarnings, err
 	}
 
-	job, deleteWarnings, err := actor.CloudControllerClient.DeleteSpace(space.GUID)
+	job, deleteWarnings, err := actor.CloudControllerClient.DeleteSpaceJob(space.GUID)
 	allWarnings = append(allWarnings, Warnings(deleteWarnings)...)
 	if err != nil {
 		return allWarnings, err
@@ -37,9 +38,9 @@ func (actor Actor) DeleteSpaceByNameAndOrganizationName(spaceName string, orgNam
 
 // GetOrganizationSpaces returns a list of spaces in the specified org
 func (actor Actor) GetOrganizationSpaces(orgGUID string) ([]Space, Warnings, error) {
-	ccv2Spaces, warnings, err := actor.CloudControllerClient.GetSpaces(ccv2.QQuery{
-		Filter:   ccv2.OrganizationGUIDFilter,
-		Operator: ccv2.EqualOperator,
+	ccv2Spaces, warnings, err := actor.CloudControllerClient.GetSpaces(ccv2.Filter{
+		Type:     constant.OrganizationGUIDFilter,
+		Operator: constant.EqualOperator,
 		Values:   []string{orgGUID},
 	})
 	if err != nil {
@@ -57,14 +58,14 @@ func (actor Actor) GetOrganizationSpaces(orgGUID string) ([]Space, Warnings, err
 // GetSpaceByOrganizationAndName returns an Space based on the org and name.
 func (actor Actor) GetSpaceByOrganizationAndName(orgGUID string, spaceName string) (Space, Warnings, error) {
 	ccv2Spaces, warnings, err := actor.CloudControllerClient.GetSpaces(
-		ccv2.QQuery{
-			Filter:   ccv2.NameFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.NameFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{spaceName},
 		},
-		ccv2.QQuery{
-			Filter:   ccv2.OrganizationGUIDFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.OrganizationGUIDFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{orgGUID},
 		},
 	)

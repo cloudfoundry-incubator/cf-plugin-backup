@@ -12,13 +12,15 @@ import (
 )
 
 const (
-	CFEventuallyTimeout   = 30 * time.Second
+	CFEventuallyTimeout   = 300 * time.Second
 	CFConsistentlyTimeout = 500 * time.Millisecond
 )
 
 var (
 	// Per Test Level
-	homeDir string
+	homeDir       string
+	ReadOnlyOrg   string
+	ReadOnlySpace string
 )
 
 func TestGlobal(t *testing.T) {
@@ -33,6 +35,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	// Setup common environment variables
 	helpers.TurnOffColors()
+
+	helpers.SetupSynchronizedSuite(func() {
+		helpers.EnableFeatureFlag("diego_docker")
+		helpers.EnableFeatureFlag("service_instance_sharing")
+	})
+
+	ReadOnlyOrg, ReadOnlySpace = helpers.SetupReadOnlyOrgAndSpace()
+
 	return nil
 }, func(_ []byte) {
 	if GinkgoParallelNode() != 1 {
@@ -49,9 +59,3 @@ var _ = AfterEach(func() {
 	GinkgoWriter.Write([]byte("==============================Global After Each=============================="))
 	helpers.DestroyHomeDir(homeDir)
 })
-
-func setupCF(org string, space string) {
-	helpers.LoginCF()
-	helpers.CreateOrgAndSpace(org, space)
-	helpers.TargetOrgAndSpace(org, space)
-}

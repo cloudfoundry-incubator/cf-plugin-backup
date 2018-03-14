@@ -1,12 +1,12 @@
 language: go
 go:
-  - 1.9
+  - "1.10"
 go_import_path: code.cloudfoundry.org/cli
 install:
 - go install ./vendor/github.com/onsi/ginkgo/ginkgo
 script:
 - go tool vet -all -shadow=true ./api ./actor ./command ./integration ./types ./util ./version
-- CF_HOME=$(pwd)/fixtures ginkgo -r -randomizeAllSpecs -randomizeSuites -race -skipPackage integration
+- CF_HOME=$(pwd)/fixtures ginkgo -r -randomizeAllSpecs -randomizeSuites -race -skipPackage integration,cf/ssh
 branches:
   only:
   - master

@@ -7,6 +7,7 @@ import (
 	. "code.cloudfoundry.org/cli/actor/v2action"
 	"code.cloudfoundry.org/cli/actor/v2action/v2actionfakes"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -116,7 +117,7 @@ var _ = Describe("Space", func() {
 
 						BeforeEach(func() {
 							expectedErr = errors.New("some delete space error")
-							fakeCloudControllerClient.DeleteSpaceReturns(
+							fakeCloudControllerClient.DeleteSpaceJobReturns(
 								ccv2.Job{},
 								ccv2.Warnings{"warning-5", "warning-6"},
 								expectedErr,
@@ -131,7 +132,7 @@ var _ = Describe("Space", func() {
 
 					Context("when the delete returns a job", func() {
 						BeforeEach(func() {
-							fakeCloudControllerClient.DeleteSpaceReturns(
+							fakeCloudControllerClient.DeleteSpaceJobReturns(
 								ccv2.Job{GUID: "some-job-guid"},
 								ccv2.Warnings{"warning-5", "warning-6"},
 								nil,
@@ -162,27 +163,27 @@ var _ = Describe("Space", func() {
 								Expect(warnings).To(ConsistOf("warning-1", "warning-2", "warning-3", "warning-4", "warning-5", "warning-6", "warning-7", "warning-8"))
 
 								Expect(fakeCloudControllerClient.GetOrganizationsCallCount()).To(Equal(1))
-								Expect(fakeCloudControllerClient.GetOrganizationsArgsForCall(0)).To(Equal([]ccv2.QQuery{{
-									Filter:   ccv2.NameFilter,
-									Operator: ccv2.EqualOperator,
+								Expect(fakeCloudControllerClient.GetOrganizationsArgsForCall(0)).To(Equal([]ccv2.Filter{{
+									Type:     constant.NameFilter,
+									Operator: constant.EqualOperator,
 									Values:   []string{"some-org"},
 								}}))
 
 								Expect(fakeCloudControllerClient.GetSpacesCallCount()).To(Equal(1))
-								Expect(fakeCloudControllerClient.GetSpacesArgsForCall(0)).To(Equal([]ccv2.QQuery{{
-									Filter:   ccv2.NameFilter,
-									Operator: ccv2.EqualOperator,
+								Expect(fakeCloudControllerClient.GetSpacesArgsForCall(0)).To(Equal([]ccv2.Filter{{
+									Type:     constant.NameFilter,
+									Operator: constant.EqualOperator,
 									Values:   []string{"some-space"},
 								},
 									{
-										Filter:   ccv2.OrganizationGUIDFilter,
-										Operator: ccv2.EqualOperator,
+										Type:     constant.OrganizationGUIDFilter,
+										Operator: constant.EqualOperator,
 										Values:   []string{"some-org-guid"},
 									},
 								}))
 
-								Expect(fakeCloudControllerClient.DeleteSpaceCallCount()).To(Equal(1))
-								Expect(fakeCloudControllerClient.DeleteSpaceArgsForCall(0)).To(Equal("some-space-guid"))
+								Expect(fakeCloudControllerClient.DeleteSpaceJobCallCount()).To(Equal(1))
+								Expect(fakeCloudControllerClient.DeleteSpaceJobArgsForCall(0)).To(Equal("some-space-guid"))
 
 								Expect(fakeCloudControllerClient.PollJobCallCount()).To(Equal(1))
 								Expect(fakeCloudControllerClient.PollJobArgsForCall(0)).To(Equal(ccv2.Job{GUID: "some-job-guid"}))
@@ -236,10 +237,10 @@ var _ = Describe("Space", func() {
 
 					Expect(fakeCloudControllerClient.GetSpacesCallCount()).To(Equal(1))
 					Expect(fakeCloudControllerClient.GetSpacesArgsForCall(0)).To(Equal(
-						[]ccv2.QQuery{
+						[]ccv2.Filter{
 							{
-								Filter:   ccv2.OrganizationGUIDFilter,
-								Operator: ccv2.EqualOperator,
+								Type:     constant.OrganizationGUIDFilter,
+								Operator: constant.EqualOperator,
 								Values:   []string{"some-org-guid"},
 							},
 						}))
@@ -297,15 +298,15 @@ var _ = Describe("Space", func() {
 
 					Expect(fakeCloudControllerClient.GetSpacesCallCount()).To(Equal(1))
 					Expect(fakeCloudControllerClient.GetSpacesArgsForCall(0)).To(ConsistOf(
-						[]ccv2.QQuery{
+						[]ccv2.Filter{
 							{
-								Filter:   ccv2.OrganizationGUIDFilter,
-								Operator: ccv2.EqualOperator,
+								Type:     constant.OrganizationGUIDFilter,
+								Operator: constant.EqualOperator,
 								Values:   []string{"some-org-guid"},
 							},
 							{
-								Filter:   ccv2.NameFilter,
-								Operator: ccv2.EqualOperator,
+								Type:     constant.NameFilter,
+								Operator: constant.EqualOperator,
 								Values:   []string{"some-space"},
 							},
 						}))

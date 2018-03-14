@@ -8,16 +8,19 @@ type Config interface {
 	AccessToken() string
 	PollingInterval() time.Duration
 	RefreshToken() string
-	SSHOAuthClient() string
 	SetAccessToken(accessToken string)
 	SetRefreshToken(refreshToken string)
 	SetTargetInformation(api string, apiVersion string, auth string, minCLIVersion string, doppler string, routing string, skipSSLValidation bool)
 	SetTokenInformation(accessToken string, refreshToken string, sshOAuthClient string)
+	SetUAAClientCredentials(client string, clientSecret string)
+	SetUAAGrantType(uaaGrantType string)
 	SkipSSLValidation() bool
+	SSHOAuthClient() string
 	StagingTimeout() time.Duration
 	StartupTimeout() time.Duration
 	Target() string
-	UnsetOrganizationInformation()
+	UAAGrantType() string
+	UnsetOrganizationAndSpaceInformation()
 	UnsetSpaceInformation()
 	Verbose() (bool, []string)
 }

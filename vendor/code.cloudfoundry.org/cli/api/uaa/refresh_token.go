@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"code.cloudfoundry.org/cli/api/uaa/constant"
 	"code.cloudfoundry.org/cli/api/uaa/internal"
 )
 
@@ -23,12 +24,20 @@ func (refreshTokenResponse RefreshedTokens) AuthorizationToken() string {
 
 // RefreshAccessToken refreshes the current access token.
 func (client *Client) RefreshAccessToken(refreshToken string) (RefreshedTokens, error) {
-	body := strings.NewReader(url.Values{
-		"client_id":     {client.id},
-		"client_secret": {client.secret},
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {refreshToken},
-	}.Encode())
+	values := url.Values{
+		"client_id":     {client.config.UAAOAuthClient()},
+		"client_secret": {client.config.UAAOAuthClientSecret()},
+	}
+
+	// An empty grant_type implies that the authentication grant_type is 'password'
+	if client.config.UAAGrantType() != "" {
+		values.Add("grant_type", client.config.UAAGrantType())
+	} else {
+		values.Add("grant_type", string(constant.GrantTypeRefreshToken))
+		values.Add("refresh_token", refreshToken)
+	}
+
+	body := strings.NewReader(values.Encode())
 
 	request, err := client.newRequest(requestOptions{
 		RequestName: internal.PostOAuthTokenRequest,
@@ -39,7 +48,9 @@ func (client *Client) RefreshAccessToken(refreshToken string) (RefreshedTokens, 
 		return RefreshedTokens{}, err
 	}
 
-	request.SetBasicAuth(client.id, client.secret)
+	if client.config.UAAGrantType() != string(constant.GrantTypeClientCredentials) {
+		request.SetBasicAuth(client.config.UAAOAuthClient(), client.config.UAAOAuthClientSecret())
+	}
 
 	var refreshResponse RefreshedTokens
 	response := Response{

@@ -9,6 +9,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/v2action/v2actionfakes"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	"code.cloudfoundry.org/cli/types"
 
 	"github.com/cloudfoundry/sonde-go/events"
@@ -20,11 +21,13 @@ var _ = Describe("Application Actions", func() {
 	var (
 		actor                     *Actor
 		fakeCloudControllerClient *v2actionfakes.FakeCloudControllerClient
+		fakeConfig                *v2actionfakes.FakeConfig
 	)
 
 	BeforeEach(func() {
 		fakeCloudControllerClient = new(v2actionfakes.FakeCloudControllerClient)
-		actor = NewActor(fakeCloudControllerClient, nil, nil)
+		fakeConfig = new(v2actionfakes.FakeConfig)
+		actor = NewActor(fakeCloudControllerClient, nil, fakeConfig)
 	})
 
 	Describe("Application", func() {
@@ -119,14 +122,14 @@ var _ = Describe("Application Actions", func() {
 		Describe("StagingCompleted", func() {
 			Context("when staging the application completes", func() {
 				It("returns true", func() {
-					app.PackageState = ccv2.ApplicationPackageStaged
+					app.PackageState = constant.ApplicationPackageStaged
 					Expect(app.StagingCompleted()).To(BeTrue())
 				})
 			})
 
 			Context("when the application is *not* staged", func() {
 				It("returns false", func() {
-					app.PackageState = ccv2.ApplicationPackageFailed
+					app.PackageState = constant.ApplicationPackageFailed
 					Expect(app.StagingCompleted()).To(BeFalse())
 				})
 			})
@@ -135,14 +138,14 @@ var _ = Describe("Application Actions", func() {
 		Describe("StagingFailed", func() {
 			Context("when staging the application fails", func() {
 				It("returns true", func() {
-					app.PackageState = ccv2.ApplicationPackageFailed
+					app.PackageState = constant.ApplicationPackageFailed
 					Expect(app.StagingFailed()).To(BeTrue())
 				})
 			})
 
 			Context("when staging the application does *not* fail", func() {
 				It("returns false", func() {
-					app.PackageState = ccv2.ApplicationPackageStaged
+					app.PackageState = constant.ApplicationPackageStaged
 					Expect(app.StagingFailed()).To(BeFalse())
 				})
 			})
@@ -189,13 +192,13 @@ var _ = Describe("Application Actions", func() {
 		Describe("Started", func() {
 			Context("when app is started", func() {
 				It("returns true", func() {
-					Expect(Application{State: ccv2.ApplicationStarted}.Started()).To(BeTrue())
+					Expect(Application{State: constant.ApplicationStarted}.Started()).To(BeTrue())
 				})
 			})
 
 			Context("when app is stopped", func() {
 				It("returns false", func() {
-					Expect(Application{State: ccv2.ApplicationStopped}.Started()).To(BeFalse())
+					Expect(Application{State: constant.ApplicationStopped}.Started()).To(BeFalse())
 				})
 			})
 		})
@@ -203,13 +206,13 @@ var _ = Describe("Application Actions", func() {
 		Describe("Stopped", func() {
 			Context("when app is started", func() {
 				It("returns true", func() {
-					Expect(Application{State: ccv2.ApplicationStopped}.Stopped()).To(BeTrue())
+					Expect(Application{State: constant.ApplicationStopped}.Stopped()).To(BeTrue())
 				})
 			})
 
 			Context("when app is stopped", func() {
 				It("returns false", func() {
-					Expect(Application{State: ccv2.ApplicationStarted}.Stopped()).To(BeFalse())
+					Expect(Application{State: constant.ApplicationStarted}.Stopped()).To(BeFalse())
 				})
 			})
 		})
@@ -325,15 +328,15 @@ var _ = Describe("Application Actions", func() {
 				Expect(warnings).To(Equal(Warnings{"foo"}))
 
 				Expect(fakeCloudControllerClient.GetApplicationsCallCount()).To(Equal(1))
-				Expect(fakeCloudControllerClient.GetApplicationsArgsForCall(0)).To(ConsistOf([]ccv2.QQuery{
-					ccv2.QQuery{
-						Filter:   ccv2.NameFilter,
-						Operator: ccv2.EqualOperator,
+				Expect(fakeCloudControllerClient.GetApplicationsArgsForCall(0)).To(ConsistOf([]ccv2.Filter{
+					ccv2.Filter{
+						Type:     constant.NameFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"some-app"},
 					},
-					ccv2.QQuery{
-						Filter:   ccv2.SpaceGUIDFilter,
-						Operator: ccv2.EqualOperator,
+					ccv2.Filter{
+						Type:     constant.SpaceGUIDFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"some-space-guid"},
 					},
 				}))
@@ -401,10 +404,10 @@ var _ = Describe("Application Actions", func() {
 				Expect(warnings).To(ConsistOf("warning-1", "warning-2"))
 
 				Expect(fakeCloudControllerClient.GetApplicationsCallCount()).To(Equal(1))
-				Expect(fakeCloudControllerClient.GetApplicationsArgsForCall(0)).To(ConsistOf([]ccv2.QQuery{
-					ccv2.QQuery{
-						Filter:   ccv2.SpaceGUIDFilter,
-						Operator: ccv2.EqualOperator,
+				Expect(fakeCloudControllerClient.GetApplicationsArgsForCall(0)).To(ConsistOf([]ccv2.Filter{
+					ccv2.Filter{
+						Type:     constant.SpaceGUIDFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"some-space-guid"},
 					},
 				}))
@@ -656,7 +659,6 @@ var _ = Describe("Application Actions", func() {
 		var (
 			app            Application
 			fakeNOAAClient *v2actionfakes.FakeNOAAClient
-			fakeConfig     *v2actionfakes.FakeConfig
 
 			messages <-chan *LogMessage
 			logErrs  <-chan error
@@ -669,7 +671,6 @@ var _ = Describe("Application Actions", func() {
 		)
 
 		BeforeEach(func() {
-			fakeConfig = new(v2actionfakes.FakeConfig)
 			fakeConfig.StagingTimeoutReturns(time.Minute)
 			fakeConfig.StartupTimeoutReturns(time.Minute)
 
@@ -704,7 +705,7 @@ var _ = Describe("Application Actions", func() {
 						GUID:         "some-app-guid",
 						Instances:    types.NullInt{Value: 2, IsSet: true},
 						Name:         "some-app",
-						PackageState: ccv2.ApplicationPackagePending,
+						PackageState: constant.ApplicationPackagePending,
 					}, ccv2.Warnings{"app-warnings-1"}, nil
 				}
 
@@ -712,23 +713,23 @@ var _ = Describe("Application Actions", func() {
 					GUID:         "some-app-guid",
 					Name:         "some-app",
 					Instances:    types.NullInt{Value: 2, IsSet: true},
-					PackageState: ccv2.ApplicationPackageStaged,
+					PackageState: constant.ApplicationPackageStaged,
 				}, ccv2.Warnings{"app-warnings-2"}, nil
 			}
 
 			instanceCount := 0
-			fakeCloudControllerClient.GetApplicationInstancesByApplicationStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
+			fakeCloudControllerClient.GetApplicationApplicationInstancesStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
 				if instanceCount == 0 {
 					instanceCount++
 					return map[int]ccv2.ApplicationInstance{
-						0: {State: ccv2.ApplicationInstanceStarting},
-						1: {State: ccv2.ApplicationInstanceStarting},
+						0: {State: constant.ApplicationInstanceStarting},
+						1: {State: constant.ApplicationInstanceStarting},
 					}, ccv2.Warnings{"app-instance-warnings-1"}, nil
 				}
 
 				return map[int]ccv2.ApplicationInstance{
-					0: {State: ccv2.ApplicationInstanceStarting},
-					1: {State: ccv2.ApplicationInstanceRunning},
+					0: {State: constant.ApplicationInstanceStarting},
+					1: {State: constant.ApplicationInstanceRunning},
 				}, ccv2.Warnings{"app-instance-warnings-2"}, nil
 			}
 		})
@@ -760,7 +761,7 @@ var _ = Describe("Application Actions", func() {
 
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 						Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(1))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 					})
 				})
 
@@ -772,7 +773,7 @@ var _ = Describe("Application Actions", func() {
 									GUID:                "some-app-guid",
 									Name:                "some-app",
 									Instances:           types.NullInt{Value: 2, IsSet: true},
-									PackageState:        ccv2.ApplicationPackageFailed,
+									PackageState:        constant.ApplicationPackageFailed,
 									StagingFailedReason: "NoAppDetectedError",
 								}, ccv2.Warnings{"app-warnings-1"}, nil
 							}
@@ -787,7 +788,7 @@ var _ = Describe("Application Actions", func() {
 							Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 							Expect(fakeConfig.StagingTimeoutCallCount()).To(Equal(1))
 							Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(1))
-							Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+							Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 						})
 					})
 
@@ -798,7 +799,7 @@ var _ = Describe("Application Actions", func() {
 									GUID:                "some-app-guid",
 									Name:                "some-app",
 									Instances:           types.NullInt{Value: 2, IsSet: true},
-									PackageState:        ccv2.ApplicationPackageFailed,
+									PackageState:        constant.ApplicationPackageFailed,
 									StagingFailedReason: "OhNoes",
 								}, ccv2.Warnings{"app-warnings-1"}, nil
 							}
@@ -813,7 +814,7 @@ var _ = Describe("Application Actions", func() {
 							Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 							Expect(fakeConfig.StagingTimeoutCallCount()).To(Equal(1))
 							Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(1))
-							Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+							Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 						})
 					})
 				})
@@ -821,7 +822,7 @@ var _ = Describe("Application Actions", func() {
 				Context("when the application takes too long to stage", func() {
 					BeforeEach(func() {
 						fakeConfig.StagingTimeoutReturns(0)
-						fakeCloudControllerClient.GetApplicationInstancesByApplicationStub = nil
+						fakeCloudControllerClient.GetApplicationApplicationInstancesStub = nil
 					})
 
 					It("sends a timeout error and stops polling", func() {
@@ -832,7 +833,7 @@ var _ = Describe("Application Actions", func() {
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 						Expect(fakeConfig.StagingTimeoutCallCount()).To(Equal(2))
 						Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(0))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 					})
 				})
 			})
@@ -844,7 +845,7 @@ var _ = Describe("Application Actions", func() {
 					var expectedErr error
 					BeforeEach(func() {
 						expectedErr = errors.New("I am a banana!!!!")
-						fakeCloudControllerClient.GetApplicationInstancesByApplicationStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
+						fakeCloudControllerClient.GetApplicationApplicationInstancesStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
 							return nil, ccv2.Warnings{"app-instance-warnings-1"}, expectedErr
 						}
 					})
@@ -859,7 +860,7 @@ var _ = Describe("Application Actions", func() {
 						Eventually(errs).Should(Receive(MatchError(expectedErr)))
 
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(1))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(1))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(1))
 					})
 				})
 
@@ -878,15 +879,15 @@ var _ = Describe("Application Actions", func() {
 
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(1))
 						Expect(fakeConfig.StartupTimeoutCallCount()).To(Equal(1))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 					})
 				})
 
 				Context("when the application crashes", func() {
 					BeforeEach(func() {
-						fakeCloudControllerClient.GetApplicationInstancesByApplicationStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
+						fakeCloudControllerClient.GetApplicationApplicationInstancesStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
 							return map[int]ccv2.ApplicationInstance{
-								0: {State: ccv2.ApplicationInstanceCrashed},
+								0: {State: constant.ApplicationInstanceCrashed},
 							}, ccv2.Warnings{"app-instance-warnings-1"}, nil
 						}
 					})
@@ -902,15 +903,15 @@ var _ = Describe("Application Actions", func() {
 
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(1))
 						Expect(fakeConfig.StartupTimeoutCallCount()).To(Equal(1))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(1))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(1))
 					})
 				})
 
 				Context("when the application flaps", func() {
 					BeforeEach(func() {
-						fakeCloudControllerClient.GetApplicationInstancesByApplicationStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
+						fakeCloudControllerClient.GetApplicationApplicationInstancesStub = func(guid string) (map[int]ccv2.ApplicationInstance, ccv2.Warnings, error) {
 							return map[int]ccv2.ApplicationInstance{
-								0: {State: ccv2.ApplicationInstanceFlapping},
+								0: {State: constant.ApplicationInstanceFlapping},
 							}, ccv2.Warnings{"app-instance-warnings-1"}, nil
 						}
 					})
@@ -926,7 +927,7 @@ var _ = Describe("Application Actions", func() {
 
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(1))
 						Expect(fakeConfig.StartupTimeoutCallCount()).To(Equal(1))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(1))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(1))
 					})
 				})
 			})
@@ -949,11 +950,11 @@ var _ = Describe("Application Actions", func() {
 					passedApp := fakeCloudControllerClient.UpdateApplicationArgsForCall(0)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStarted,
+						State: constant.ApplicationStarted,
 					}))
 
 					Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(2))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(2))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(2))
 					Eventually(fakeNOAAClient.CloseCallCount).Should(Equal(2))
 				})
 			})
@@ -979,11 +980,11 @@ var _ = Describe("Application Actions", func() {
 					passedApp := fakeCloudControllerClient.UpdateApplicationArgsForCall(0)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStarted,
+						State: constant.ApplicationStarted,
 					}))
 
 					Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(2))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 				})
 			})
 
@@ -1001,7 +1002,7 @@ var _ = Describe("Application Actions", func() {
 
 					Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 					Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(0))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 				})
 			})
 
@@ -1019,12 +1020,12 @@ var _ = Describe("Application Actions", func() {
 			})
 
 			JustBeforeEach(func() {
-				messages, logErrs, appState, warnings, errs = actor.StartApplication(app, fakeNOAAClient, fakeConfig)
+				messages, logErrs, appState, warnings, errs = actor.StartApplication(app, fakeNOAAClient)
 			})
 
 			Context("when the app is already staged", func() {
 				BeforeEach(func() {
-					app.PackageState = ccv2.ApplicationPackageStaged
+					app.PackageState = constant.ApplicationPackageStaged
 				})
 
 				It("does not send ApplicationStateStaging", func() {
@@ -1040,7 +1041,7 @@ var _ = Describe("Application Actions", func() {
 					passedApp := fakeCloudControllerClient.UpdateApplicationArgsForCall(0)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStarted,
+						State: constant.ApplicationStarted,
 					}))
 				})
 			})
@@ -1057,12 +1058,12 @@ var _ = Describe("Application Actions", func() {
 			})
 
 			JustBeforeEach(func() {
-				messages, logErrs, appState, warnings, errs = actor.RestartApplication(app, fakeNOAAClient, fakeConfig)
+				messages, logErrs, appState, warnings, errs = actor.RestartApplication(app, fakeNOAAClient)
 			})
 
 			Context("when application is running", func() {
 				BeforeEach(func() {
-					app.State = ccv2.ApplicationStarted
+					app.State = constant.ApplicationStarted
 				})
 
 				It("stops, starts and polls for an app instance", func() {
@@ -1082,17 +1083,17 @@ var _ = Describe("Application Actions", func() {
 					passedApp := fakeCloudControllerClient.UpdateApplicationArgsForCall(0)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStopped,
+						State: constant.ApplicationStopped,
 					}))
 
 					passedApp = fakeCloudControllerClient.UpdateApplicationArgsForCall(1)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStarted,
+						State: constant.ApplicationStarted,
 					}))
 
 					Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(2))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(2))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(2))
 					Eventually(fakeNOAAClient.CloseCallCount).Should(Equal(2))
 				})
 
@@ -1122,14 +1123,14 @@ var _ = Describe("Application Actions", func() {
 
 						Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 						Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(0))
-						Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+						Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 					})
 				})
 			})
 
 			Context("when the app is not running", func() {
 				BeforeEach(func() {
-					app.State = ccv2.ApplicationStopped
+					app.State = constant.ApplicationStopped
 				})
 
 				It("does not stop an app instance", func() {
@@ -1145,14 +1146,14 @@ var _ = Describe("Application Actions", func() {
 					passedApp := fakeCloudControllerClient.UpdateApplicationArgsForCall(0)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStarted,
+						State: constant.ApplicationStarted,
 					}))
 				})
 			})
 
 			Context("when the app is already staged", func() {
 				BeforeEach(func() {
-					app.PackageState = ccv2.ApplicationPackageStaged
+					app.PackageState = constant.ApplicationPackageStaged
 				})
 
 				It("does not send ApplicationStateStaging", func() {
@@ -1168,7 +1169,7 @@ var _ = Describe("Application Actions", func() {
 					passedApp := fakeCloudControllerClient.UpdateApplicationArgsForCall(0)
 					Expect(passedApp).To(Equal(ccv2.Application{
 						GUID:  "some-app-guid",
-						State: ccv2.ApplicationStarted,
+						State: constant.ApplicationStarted,
 					}))
 				})
 			})
@@ -1178,7 +1179,7 @@ var _ = Describe("Application Actions", func() {
 
 		Describe("RestageApplication", func() {
 			JustBeforeEach(func() {
-				messages, logErrs, appState, warnings, errs = actor.RestageApplication(app, fakeNOAAClient, fakeConfig)
+				messages, logErrs, appState, warnings, errs = actor.RestageApplication(app, fakeNOAAClient)
 			})
 
 			Context("when restaging succeeds", func() {
@@ -1207,7 +1208,7 @@ var _ = Describe("Application Actions", func() {
 					}))
 
 					Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(2))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(2))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(2))
 					Eventually(fakeNOAAClient.CloseCallCount).Should(Equal(2))
 				})
 
@@ -1231,7 +1232,7 @@ var _ = Describe("Application Actions", func() {
 
 					Expect(fakeConfig.PollingIntervalCallCount()).To(Equal(0))
 					Expect(fakeCloudControllerClient.GetApplicationCallCount()).To(Equal(0))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 				})
 			})
 		})

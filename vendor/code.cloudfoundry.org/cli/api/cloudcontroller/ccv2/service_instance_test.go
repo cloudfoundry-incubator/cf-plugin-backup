@@ -5,6 +5,7 @@ import (
 
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	. "code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/ghttp"
@@ -89,14 +90,14 @@ var _ = Describe("Service Instance", func() {
 		Describe("UserProvided", func() {
 			Context("when type is USER_PROVIDED_SERVICE", func() {
 				It("returns true", func() {
-					service := ServiceInstance{Type: UserProvidedService}
+					service := ServiceInstance{Type: constant.ServiceInstanceTypeUserProvidedService}
 					Expect(service.UserProvided()).To(BeTrue())
 				})
 			})
 
 			Context("when type is MANAGED_SERVICE", func() {
 				It("returns false", func() {
-					service := ServiceInstance{Type: ManagedService}
+					service := ServiceInstance{Type: constant.ServiceInstanceTypeManagedService}
 					Expect(service.UserProvided()).To(BeFalse())
 				})
 			})
@@ -105,14 +106,14 @@ var _ = Describe("Service Instance", func() {
 		Describe("Managed", func() {
 			Context("when type is MANAGED_SERVICE", func() {
 				It("returns false", func() {
-					service := ServiceInstance{Type: ManagedService}
+					service := ServiceInstance{Type: constant.ServiceInstanceTypeManagedService}
 					Expect(service.Managed()).To(BeTrue())
 				})
 			})
 
 			Context("when type is USER_PROVIDED_SERVICE", func() {
 				It("returns true", func() {
-					service := ServiceInstance{Type: UserProvidedService}
+					service := ServiceInstance{Type: constant.ServiceInstanceTypeUserProvidedService}
 					Expect(service.Managed()).To(BeFalse())
 				})
 			})
@@ -128,6 +129,7 @@ var _ = Describe("Service Instance", func() {
 				"entity": {
 					"name": "some-service-name",
 					"space_guid": "some-space-guid",
+					"service_guid": "some-service-guid",
 					"service_plan_guid": "some-service-plan-guid",
 					"type": "managed_service_instance",
 					"tags": [
@@ -162,8 +164,9 @@ var _ = Describe("Service Instance", func() {
 					GUID:            "some-service-guid",
 					Name:            "some-service-name",
 					SpaceGUID:       "some-space-guid",
+					ServiceGUID:     "some-service-guid",
 					ServicePlanGUID: "some-service-plan-guid",
-					Type:            ManagedService,
+					Type:            constant.ServiceInstanceTypeManagedService,
 					Tags:            []string{"tag-1", "tag-2"},
 					DashboardURL:    "some-dashboard-url",
 					LastOperation: LastOperation{
@@ -191,6 +194,7 @@ var _ = Describe("Service Instance", func() {
 						"entity": {
 							"name": "some-service-name-1",
 							"space_guid": "some-space-guid",
+					"service_guid": "some-service-guid",
 							"type": "managed_service_instance"
 						}
 					},
@@ -250,37 +254,38 @@ var _ = Describe("Service Instance", func() {
 
 		Context("when service instances exist", func() {
 			It("returns all the queried service instances", func() {
-				serviceInstances, warnings, err := client.GetServiceInstances(QQuery{
-					Filter:   SpaceGUIDFilter,
-					Operator: EqualOperator,
+				serviceInstances, warnings, err := client.GetServiceInstances(Filter{
+					Type:     constant.SpaceGUIDFilter,
+					Operator: constant.EqualOperator,
 					Values:   []string{"some-space-guid"},
 				})
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(serviceInstances).To(ConsistOf([]ServiceInstance{
 					{
-						Name:      "some-service-name-1",
-						GUID:      "some-service-guid-1",
-						SpaceGUID: "some-space-guid",
-						Type:      ManagedService,
+						Name:        "some-service-name-1",
+						GUID:        "some-service-guid-1",
+						SpaceGUID:   "some-space-guid",
+						ServiceGUID: "some-service-guid",
+						Type:        constant.ServiceInstanceTypeManagedService,
 					},
 					{
 						Name:      "some-service-name-2",
 						GUID:      "some-service-guid-2",
 						SpaceGUID: "some-space-guid",
-						Type:      ManagedService,
+						Type:      constant.ServiceInstanceTypeManagedService,
 					},
 					{
 						Name:      "some-service-name-3",
 						GUID:      "some-service-guid-3",
 						SpaceGUID: "some-space-guid",
-						Type:      ManagedService,
+						Type:      constant.ServiceInstanceTypeManagedService,
 					},
 					{
 						Name:      "some-service-name-4",
 						GUID:      "some-service-guid-4",
 						SpaceGUID: "some-space-guid",
-						Type:      ManagedService,
+						Type:      constant.ServiceInstanceTypeManagedService,
 					},
 				}))
 				Expect(warnings).To(ConsistOf(Warnings{"this is a warning", "this is another warning"}))
@@ -301,6 +306,7 @@ var _ = Describe("Service Instance", func() {
 							"entity": {
 								"name": "some-service-name-1",
 								"space_guid": "some-space-guid",
+					"service_guid": "some-service-guid",
 								"type": "managed_service_instance"
 							}
 						},
@@ -360,18 +366,18 @@ var _ = Describe("Service Instance", func() {
 
 			Context("when service instances exist", func() {
 				It("returns all the queried service instances", func() {
-					serviceInstances, warnings, err := client.GetSpaceServiceInstances("some-space-guid", true, QQuery{
-						Filter:   NameFilter,
-						Operator: EqualOperator,
+					serviceInstances, warnings, err := client.GetSpaceServiceInstances("some-space-guid", true, Filter{
+						Type:     constant.NameFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"foobar"},
 					})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(serviceInstances).To(ConsistOf([]ServiceInstance{
-						{Name: "some-service-name-1", GUID: "some-service-guid-1", SpaceGUID: "some-space-guid", Type: ManagedService},
-						{Name: "some-service-name-2", GUID: "some-service-guid-2", SpaceGUID: "some-space-guid", Type: UserProvidedService},
-						{Name: "some-service-name-3", GUID: "some-service-guid-3", SpaceGUID: "some-space-guid", Type: ManagedService},
-						{Name: "some-service-name-4", GUID: "some-service-guid-4", SpaceGUID: "some-space-guid", Type: UserProvidedService},
+						{Name: "some-service-name-1", GUID: "some-service-guid-1", SpaceGUID: "some-space-guid", ServiceGUID: "some-service-guid", Type: constant.ServiceInstanceTypeManagedService},
+						{Name: "some-service-name-2", GUID: "some-service-guid-2", SpaceGUID: "some-space-guid", Type: constant.ServiceInstanceTypeUserProvidedService},
+						{Name: "some-service-name-3", GUID: "some-service-guid-3", SpaceGUID: "some-space-guid", Type: constant.ServiceInstanceTypeManagedService},
+						{Name: "some-service-name-4", GUID: "some-service-guid-4", SpaceGUID: "some-space-guid", Type: constant.ServiceInstanceTypeUserProvidedService},
 					}))
 					Expect(warnings).To(ConsistOf(Warnings{"this is a warning", "this is another warning"}))
 				})
@@ -416,16 +422,16 @@ var _ = Describe("Service Instance", func() {
 
 			Context("when service instances exist", func() {
 				It("returns all the queried service instances", func() {
-					serviceInstances, warnings, err := client.GetSpaceServiceInstances("some-space-guid", false, QQuery{
-						Filter:   NameFilter,
-						Operator: EqualOperator,
+					serviceInstances, warnings, err := client.GetSpaceServiceInstances("some-space-guid", false, Filter{
+						Type:     constant.NameFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"foobar"},
 					})
 					Expect(err).NotTo(HaveOccurred())
 
 					Expect(serviceInstances).To(ConsistOf([]ServiceInstance{
-						{Name: "some-service-name-1", GUID: "some-service-guid-1", SpaceGUID: "some-space-guid", Type: ManagedService},
-						{Name: "some-service-name-2", GUID: "some-service-guid-2", SpaceGUID: "some-space-guid", Type: ManagedService},
+						{Name: "some-service-name-1", GUID: "some-service-guid-1", SpaceGUID: "some-space-guid", Type: constant.ServiceInstanceTypeManagedService},
+						{Name: "some-service-name-2", GUID: "some-service-guid-2", SpaceGUID: "some-space-guid", Type: constant.ServiceInstanceTypeManagedService},
 					}))
 					Expect(warnings).To(ConsistOf(Warnings{"this is a warning"}))
 				})

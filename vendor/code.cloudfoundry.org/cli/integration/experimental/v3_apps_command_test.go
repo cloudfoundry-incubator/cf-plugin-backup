@@ -29,10 +29,10 @@ var _ = Describe("v3-apps command", func() {
 			It("Displays command usage to output", func() {
 				session := helpers.CF("v3-apps", "--help")
 
-				Eventually(session.Out).Should(Say("NAME:"))
-				Eventually(session.Out).Should(Say("v3-apps - List all apps in the target space"))
-				Eventually(session.Out).Should(Say("USAGE:"))
-				Eventually(session.Out).Should(Say("cf v3-apps"))
+				Eventually(session).Should(Say("NAME:"))
+				Eventually(session).Should(Say("v3-apps - List all apps in the target space"))
+				Eventually(session).Should(Say("USAGE:"))
+				Eventually(session).Should(Say("cf v3-apps"))
 
 				Eventually(session).Should(Exit(0))
 			})
@@ -41,7 +41,7 @@ var _ = Describe("v3-apps command", func() {
 
 	It("displays the experimental warning", func() {
 		session := helpers.CF("v3-apps")
-		Eventually(session.Out).Should(Say("This command is in EXPERIMENTAL stage and may change without notice"))
+		Eventually(session).Should(Say("This command is in EXPERIMENTAL stage and may change without notice"))
 		Eventually(session).Should(Exit())
 	})
 
@@ -118,7 +118,7 @@ var _ = Describe("v3-apps command", func() {
 
 			It("fails with no org targeted error message", func() {
 				session := helpers.CF("v3-apps")
-				Eventually(session.Out).Should(Say("FAILED"))
+				Eventually(session).Should(Say("FAILED"))
 				Eventually(session.Err).Should(Say("No org targeted, use 'cf target -o ORG' to target an org\\."))
 				Eventually(session).Should(Exit(1))
 			})
@@ -133,7 +133,7 @@ var _ = Describe("v3-apps command", func() {
 
 			It("fails with no space targeted error message", func() {
 				session := helpers.CF("v3-apps")
-				Eventually(session.Out).Should(Say("FAILED"))
+				Eventually(session).Should(Say("FAILED"))
 				Eventually(session.Err).Should(Say("No space targeted, use 'cf target -s SPACE' to target a space\\."))
 				Eventually(session).Should(Exit(1))
 			})
@@ -144,7 +144,7 @@ var _ = Describe("v3-apps command", func() {
 		var userName string
 
 		BeforeEach(func() {
-			setupCF(orgName, spaceName)
+			helpers.SetupCF(orgName, spaceName)
 			userName, _ = helpers.GetCredentials()
 		})
 
@@ -170,7 +170,7 @@ var _ = Describe("v3-apps command", func() {
 					Eventually(helpers.CustomCF(helpers.CFEnv{WorkingDirectory: appDir}, "v3-push", appName1)).Should(Exit(0))
 				})
 
-				domainName = defaultSharedDomain()
+				domainName = helpers.DefaultSharedDomain()
 			})
 
 			It("displays apps in the list", func() {

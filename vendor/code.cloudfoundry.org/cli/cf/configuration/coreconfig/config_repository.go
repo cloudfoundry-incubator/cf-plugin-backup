@@ -102,29 +102,31 @@ type Reader interface {
 type ReadWriter interface {
 	Reader
 	ClearSession()
+	SetAccessToken(string)
 	SetAPIEndpoint(string)
 	SetAPIVersion(string)
+	SetAsyncTimeout(uint)
+	SetAuthenticationEndpoint(string)
+	SetCLIVersion(string)
+	SetColorEnabled(string)
+	SetDopplerEndpoint(string)
+	SetLocale(string)
 	SetMinCLIVersion(string)
 	SetMinRecommendedCLIVersion(string)
-	SetAuthenticationEndpoint(string)
-	SetDopplerEndpoint(string)
-	SetUaaEndpoint(string)
+	SetOrganizationFields(models.OrganizationFields)
+	SetPluginRepo(models.PluginRepo)
+	SetRefreshToken(string)
 	SetRoutingAPIEndpoint(string)
-	SetAccessToken(string)
+	SetSpaceFields(models.SpaceFields)
+	SetSSHOAuthClient(string)
+	SetSSLDisabled(bool)
+	SetTrace(string)
+	SetUaaEndpoint(string)
+	SetUAAGrantType(string)
 	SetUAAOAuthClient(string)
 	SetUAAOAuthClientSecret(string)
-	SetSSHOAuthClient(string)
-	SetRefreshToken(string)
-	SetOrganizationFields(models.OrganizationFields)
-	SetSpaceFields(models.SpaceFields)
-	SetSSLDisabled(bool)
-	SetAsyncTimeout(uint)
-	SetTrace(string)
-	SetColorEnabled(string)
-	SetLocale(string)
-	SetPluginRepo(models.PluginRepo)
+	UAAGrantType() string
 	UnSetPluginRepo(int)
-	SetCLIVersion(string)
 }
 
 //go:generate counterfeiter . Repository
@@ -565,5 +567,19 @@ func (c *ConfigRepository) SetPluginRepo(repo models.PluginRepo) {
 func (c *ConfigRepository) UnSetPluginRepo(index int) {
 	c.write(func() {
 		c.data.PluginRepos = append(c.data.PluginRepos[:index], c.data.PluginRepos[index+1:]...)
+	})
+}
+
+func (c *ConfigRepository) UAAGrantType() string {
+	grantType := ""
+	c.read(func() {
+		grantType = c.data.UAAGrantType
+	})
+	return grantType
+}
+
+func (c *ConfigRepository) SetUAAGrantType(grantType string) {
+	c.write(func() {
+		c.data.UAAGrantType = grantType
 	})
 }

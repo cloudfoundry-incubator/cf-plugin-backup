@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/v2action/v2actionfakes"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,12 +19,12 @@ var _ = Describe("Application Summary Actions", func() {
 			It("only counts the running and starting instances", func() {
 				app := ApplicationSummary{
 					RunningInstances: []ApplicationInstanceWithStats{
-						{State: ApplicationInstanceState(ccv2.ApplicationInstanceCrashed)},
-						{State: ApplicationInstanceState(ccv2.ApplicationInstanceDown)},
-						{State: ApplicationInstanceState(ccv2.ApplicationInstanceFlapping)},
-						{State: ApplicationInstanceState(ccv2.ApplicationInstanceRunning)},
-						{State: ApplicationInstanceState(ccv2.ApplicationInstanceStarting)},
-						{State: ApplicationInstanceState(ccv2.ApplicationInstanceUnknown)},
+						{State: ApplicationInstanceState(constant.ApplicationInstanceCrashed)},
+						{State: ApplicationInstanceState(constant.ApplicationInstanceDown)},
+						{State: ApplicationInstanceState(constant.ApplicationInstanceFlapping)},
+						{State: ApplicationInstanceState(constant.ApplicationInstanceRunning)},
+						{State: ApplicationInstanceState(constant.ApplicationInstanceStarting)},
+						{State: ApplicationInstanceState(constant.ApplicationInstanceUnknown)},
 					},
 				}
 				Expect(app.StartingOrRunningInstanceCount()).To(Equal(2))
@@ -35,13 +36,13 @@ var _ = Describe("Application Summary Actions", func() {
 		var (
 			actor                     *Actor
 			fakeCloudControllerClient *v2actionfakes.FakeCloudControllerClient
-			app                       ccv2.Application
+			ccApp                     ccv2.Application
 		)
 
 		BeforeEach(func() {
 			fakeCloudControllerClient = new(v2actionfakes.FakeCloudControllerClient)
 			actor = NewActor(fakeCloudControllerClient, nil, nil)
-			app = ccv2.Application{
+			ccApp = ccv2.Application{
 				GUID: "some-app-guid",
 				Name: "some-app",
 			}
@@ -65,30 +66,30 @@ var _ = Describe("Application Summary Actions", func() {
 		Context("when the application exists", func() {
 			BeforeEach(func() {
 				fakeCloudControllerClient.GetApplicationsReturns(
-					[]ccv2.Application{app},
+					[]ccv2.Application{ccApp},
 					ccv2.Warnings{"app-warning"},
 					nil)
 			})
 
 			Context("when the application is STARTED", func() {
 				BeforeEach(func() {
-					app.State = ccv2.ApplicationStarted
+					ccApp.State = constant.ApplicationStarted
 					fakeCloudControllerClient.GetApplicationsReturns(
-						[]ccv2.Application{app},
+						[]ccv2.Application{ccApp},
 						ccv2.Warnings{"app-warning"},
 						nil)
 				})
 
 				Context("when instance information is available", func() {
 					BeforeEach(func() {
-						fakeCloudControllerClient.GetApplicationInstanceStatusesByApplicationReturns(
+						fakeCloudControllerClient.GetApplicationApplicationInstanceStatusesReturns(
 							map[int]ccv2.ApplicationInstanceStatus{
 								0: {ID: 0, IsolationSegment: "isolation-segment-1"},
 								1: {ID: 1, IsolationSegment: "isolation-segment-2"}, // should never happen; iso segs for 2 instances of the same app should match.
 							},
 							ccv2.Warnings{"stats-warning"},
 							nil)
-						fakeCloudControllerClient.GetApplicationInstancesByApplicationReturns(
+						fakeCloudControllerClient.GetApplicationApplicationInstancesReturns(
 							map[int]ccv2.ApplicationInstance{
 								0: {ID: 0},
 								1: {ID: 1},
@@ -104,7 +105,7 @@ var _ = Describe("Application Summary Actions", func() {
 							Application: Application{
 								GUID:  "some-app-guid",
 								Name:  "some-app",
-								State: ccv2.ApplicationStarted,
+								State: constant.ApplicationStarted,
 							},
 							RunningInstances: []ApplicationInstanceWithStats{
 								{ID: 0, IsolationSegment: "isolation-segment-1"},
@@ -118,7 +119,7 @@ var _ = Describe("Application Summary Actions", func() {
 
 				Context("when instance information is not available", func() {
 					BeforeEach(func() {
-						fakeCloudControllerClient.GetApplicationInstanceStatusesByApplicationReturns(
+						fakeCloudControllerClient.GetApplicationApplicationInstanceStatusesReturns(
 							nil,
 							ccv2.Warnings{"stats-warning"},
 							ccerror.ApplicationStoppedStatsError{})
@@ -135,7 +136,7 @@ var _ = Describe("Application Summary Actions", func() {
 
 			Context("when the application is not STARTED", func() {
 				BeforeEach(func() {
-					app.State = ccv2.ApplicationStopped
+					ccApp.State = constant.ApplicationStopped
 				})
 
 				It("does not try and get application instance information", func() {
@@ -143,8 +144,8 @@ var _ = Describe("Application Summary Actions", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(app.RunningInstances).To(BeEmpty())
 
-					Expect(fakeCloudControllerClient.GetApplicationInstanceStatusesByApplicationCallCount()).To(Equal(0))
-					Expect(fakeCloudControllerClient.GetApplicationInstancesByApplicationCallCount()).To(Equal(0))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstanceStatusesCallCount()).To(Equal(0))
+					Expect(fakeCloudControllerClient.GetApplicationApplicationInstancesCallCount()).To(Equal(0))
 				})
 			})
 

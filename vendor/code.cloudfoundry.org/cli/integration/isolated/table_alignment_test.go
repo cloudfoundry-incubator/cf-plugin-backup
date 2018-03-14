@@ -15,7 +15,8 @@ var _ = Describe("table alignment", func() {
 
 	Context("when output is in English", func() {
 		BeforeEach(func() {
-			setupCF(ReadOnlyOrg, ReadOnlySpace)
+			helpers.LoginCF()
+			helpers.TargetOrgAndSpace(ReadOnlyOrg, ReadOnlySpace)
 		})
 
 		// Developer note: The spacing in this test is significant and explicit. Do
@@ -23,18 +24,19 @@ var _ = Describe("table alignment", func() {
 		It("aligns the table correctly", func() {
 			username, _ := helpers.GetCredentials()
 			session := helpers.CF("target")
-			Eventually(session.Out).Should(Say("api endpoint:   %s", apiURL))
-			Eventually(session.Out).Should(Say(`api version:    [\d.]+`))
-			Eventually(session.Out).Should(Say("user:           %s", username))
-			Eventually(session.Out).Should(Say("org:            %s", ReadOnlyOrg))
-			Eventually(session.Out).Should(Say("space:          %s", ReadOnlySpace))
+			Eventually(session).Should(Say("api endpoint:   %s", apiURL))
+			Eventually(session).Should(Say(`api version:    [\d.]+`))
+			Eventually(session).Should(Say("user:           %s", username))
+			Eventually(session).Should(Say("org:            %s", ReadOnlyOrg))
+			Eventually(session).Should(Say("space:          %s", ReadOnlySpace))
 			Eventually(session).Should(Exit(0))
 		})
 	})
 
 	Context("when output is in language with multibyte characters", func() {
 		BeforeEach(func() {
-			setupCF(ReadOnlyOrg, ReadOnlySpace)
+			helpers.LoginCF()
+			helpers.TargetOrgAndSpace(ReadOnlyOrg, ReadOnlySpace)
 		})
 
 		// Developer note: The spacing in this test is significant and explicit. Do
@@ -44,11 +46,11 @@ var _ = Describe("table alignment", func() {
 		XIt("aligns the table correctly", func() {
 			username, _ := helpers.GetCredentials()
 			session := helpers.CFWithEnv(map[string]string{"LANG": "ja-JP.utf8"}, "target")
-			Eventually(session.Out).Should(Say("API エンドポイント:   %s", apiURL))
-			Eventually(session.Out).Should(Say("api version:          [\\d.]+"))
-			Eventually(session.Out).Should(Say("ユーザー:             %s", username))
-			Eventually(session.Out).Should(Say("組織:                 %s", ReadOnlyOrg))
-			Eventually(session.Out).Should(Say("スペース:             %s", ReadOnlySpace))
+			Eventually(session).Should(Say("API エンドポイント:   %s", apiURL))
+			Eventually(session).Should(Say("api version:          [\\d.]+"))
+			Eventually(session).Should(Say("ユーザー:             %s", username))
+			Eventually(session).Should(Say("組織:                 %s", ReadOnlyOrg))
+			Eventually(session).Should(Say("スペース:             %s", ReadOnlySpace))
 			Eventually(session).Should(Exit(0))
 		})
 	})

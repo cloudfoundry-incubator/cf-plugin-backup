@@ -6,9 +6,9 @@ import (
 
 	"code.cloudfoundry.org/cli/actor/sharedaction"
 	"code.cloudfoundry.org/cli/actor/v2action"
-	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
 	"code.cloudfoundry.org/cli/command"
 	"code.cloudfoundry.org/cli/command/flag"
+	"code.cloudfoundry.org/cli/command/translatableerror"
 	"code.cloudfoundry.org/cli/command/v2/shared"
 )
 
@@ -89,66 +89,100 @@ func (cmd ServiceCommand) displayServiceInstanceSummary() error {
 		return err
 	}
 
-	serviceInstanceName := serviceInstanceSummary.Name
-	boundApps := strings.Join(serviceInstanceSummary.BoundApplications, ", ")
-
-	table := [][]string{{cmd.UI.TranslateText("name:"), serviceInstanceName}}
-
-	if ccv2.ServiceInstance(serviceInstanceSummary.ServiceInstance).Managed() {
-		if serviceInstanceSummary.ServiceInstanceShareType == v2action.ServiceInstanceIsSharedFrom {
-			table = append(table, []string{cmd.UI.TranslateText("shared from org/space:"), fmt.Sprintf("%s / %s", serviceInstanceSummary.ServiceInstanceSharedFrom.OrganizationName, serviceInstanceSummary.ServiceInstanceSharedFrom.SpaceName)})
-		}
-
-		table = append(table, [][]string{
-			{cmd.UI.TranslateText("service:"), serviceInstanceSummary.Service.Label},
-			{cmd.UI.TranslateText("bound apps:"), boundApps},
-			{cmd.UI.TranslateText("tags:"), strings.Join(serviceInstanceSummary.Tags, ", ")},
-			{cmd.UI.TranslateText("plan:"), serviceInstanceSummary.ServicePlan.Name},
-			{cmd.UI.TranslateText("description:"), serviceInstanceSummary.Service.Description},
-			{cmd.UI.TranslateText("documentation:"), serviceInstanceSummary.Service.DocumentationURL},
-			{cmd.UI.TranslateText("dashboard:"), serviceInstanceSummary.DashboardURL},
-		}...)
-	} else {
-		table = append(table, [][]string{
-			{cmd.UI.TranslateText("service:"), cmd.UI.TranslateText("user-provided")},
-			{cmd.UI.TranslateText("bound apps:"), boundApps},
-		}...)
+	if serviceInstanceSummary.IsManaged() {
+		cmd.displayManagedServiceInstanceSummary(serviceInstanceSummary)
+		cmd.displayManagedServiceInstanceLastOperation(serviceInstanceSummary)
+		return nil
 	}
+
+	cmd.displayUserProvidedServiceInstanceSummary(serviceInstanceSummary)
+	return nil
+}
+
+func (cmd ServiceCommand) displayManagedServiceInstanceSummary(serviceInstanceSummary v2action.ServiceInstanceSummary) {
+	table := [][]string{{cmd.UI.TranslateText("name:"), serviceInstanceSummary.Name}}
+
+	if serviceInstanceSummary.IsSharedFrom() {
+		table = append(table, []string{
+			cmd.UI.TranslateText("shared from org/space:"),
+			fmt.Sprintf(
+				"%s / %s",
+				serviceInstanceSummary.ServiceInstanceSharedFrom.OrganizationName,
+				serviceInstanceSummary.ServiceInstanceSharedFrom.SpaceName,
+			),
+		})
+	}
+
+	table = append(table, [][]string{
+		{cmd.UI.TranslateText("service:"), serviceInstanceSummary.Service.Label},
+		{cmd.UI.TranslateText("bound apps:"), strings.Join(serviceInstanceSummary.BoundApplications, ", ")},
+		{cmd.UI.TranslateText("tags:"), strings.Join(serviceInstanceSummary.Tags, ", ")},
+		{cmd.UI.TranslateText("plan:"), serviceInstanceSummary.ServicePlan.Name},
+		{cmd.UI.TranslateText("description:"), serviceInstanceSummary.Service.Description},
+		{cmd.UI.TranslateText("documentation:"), serviceInstanceSummary.Service.DocumentationURL},
+		{cmd.UI.TranslateText("dashboard:"), serviceInstanceSummary.DashboardURL},
+	}...)
 
 	cmd.UI.DisplayKeyValueTable("", table, 3)
 
-	if ccv2.ServiceInstance(serviceInstanceSummary.ServiceInstance).Managed() &&
-		serviceInstanceSummary.ServiceInstanceShareType == v2action.ServiceInstanceIsSharedTo {
+	if serviceInstanceSummary.IsNotShared() && serviceInstanceSummary.IsShareable() {
 		cmd.UI.DisplayNewline()
-		cmd.UI.DisplayText("shared with spaces:")
-
-		sharedTosTable := [][]string{
-			{cmd.UI.TranslateText("org"), cmd.UI.TranslateText("space"), cmd.UI.TranslateText("bindings")},
-		}
-
-		for _, sharedTo := range serviceInstanceSummary.ServiceInstanceSharedTos {
-			sharedTosTable = append(sharedTosTable, []string{
-				sharedTo.OrganizationName,
-				sharedTo.SpaceName,
-				fmt.Sprintf("%d", sharedTo.BoundAppCount),
-			})
-		}
-
-		cmd.UI.DisplayTableWithHeader("", sharedTosTable, 3)
+		cmd.UI.DisplayText("This service is not currently shared.")
+		return
 	}
 
-	if ccv2.ServiceInstance(serviceInstanceSummary.ServiceInstance).Managed() {
+	if serviceInstanceSummary.IsSharedTo() {
+		cmd.displayManagedServiceInstanceSharedWithInformation(serviceInstanceSummary)
+	}
+}
+
+func (cmd ServiceCommand) displayManagedServiceInstanceSharedWithInformation(serviceInstanceSummary v2action.ServiceInstanceSummary) {
+	if !serviceInstanceSummary.ServiceInstanceSharingFeatureFlag || !serviceInstanceSummary.Service.Extra.Shareable {
 		cmd.UI.DisplayNewline()
-		cmd.UI.DisplayText("Showing status of last operation from service {{.ServiceInstanceName}}...", map[string]interface{}{"ServiceInstanceName": serviceInstanceName})
-		cmd.UI.DisplayNewline()
-		lastOperationTable := [][]string{
-			{cmd.UI.TranslateText("status:"), fmt.Sprintf("%s %s", serviceInstanceSummary.ServiceInstance.LastOperation.Type, serviceInstanceSummary.ServiceInstance.LastOperation.State)},
-			{cmd.UI.TranslateText("message:"), serviceInstanceSummary.ServiceInstance.LastOperation.Description},
-			{cmd.UI.TranslateText("started:"), serviceInstanceSummary.ServiceInstance.LastOperation.CreatedAt},
-			{cmd.UI.TranslateText("updated:"), serviceInstanceSummary.ServiceInstance.LastOperation.UpdatedAt},
-		}
-		cmd.UI.DisplayKeyValueTable("", lastOperationTable, 3)
+		cmd.UI.DisplayText(translatableerror.ServiceInstanceNotShareableError{
+			FeatureFlagEnabled:          serviceInstanceSummary.ServiceInstanceSharingFeatureFlag,
+			ServiceBrokerSharingEnabled: serviceInstanceSummary.Service.Extra.Shareable,
+		}.Error())
 	}
 
-	return nil
+	cmd.UI.DisplayNewline()
+	cmd.UI.DisplayText("shared with spaces:")
+
+	sharedTosTable := [][]string{{
+		cmd.UI.TranslateText("org"),
+		cmd.UI.TranslateText("space"),
+		cmd.UI.TranslateText("bindings"),
+	}}
+
+	for _, sharedTo := range serviceInstanceSummary.ServiceInstanceSharedTos {
+		sharedTosTable = append(sharedTosTable, []string{
+			sharedTo.OrganizationName,
+			sharedTo.SpaceName,
+			fmt.Sprintf("%d", sharedTo.BoundAppCount),
+		})
+	}
+
+	cmd.UI.DisplayTableWithHeader("", sharedTosTable, 3)
+}
+
+func (cmd ServiceCommand) displayManagedServiceInstanceLastOperation(serviceInstanceSummary v2action.ServiceInstanceSummary) {
+	cmd.UI.DisplayNewline()
+	cmd.UI.DisplayText("Showing status of last operation from service {{.ServiceInstanceName}}...", map[string]interface{}{"ServiceInstanceName": serviceInstanceSummary.Name})
+	cmd.UI.DisplayNewline()
+	lastOperationTable := [][]string{
+		{cmd.UI.TranslateText("status:"), fmt.Sprintf("%s %s", serviceInstanceSummary.ServiceInstance.LastOperation.Type, serviceInstanceSummary.ServiceInstance.LastOperation.State)},
+		{cmd.UI.TranslateText("message:"), serviceInstanceSummary.ServiceInstance.LastOperation.Description},
+		{cmd.UI.TranslateText("started:"), serviceInstanceSummary.ServiceInstance.LastOperation.CreatedAt},
+		{cmd.UI.TranslateText("updated:"), serviceInstanceSummary.ServiceInstance.LastOperation.UpdatedAt},
+	}
+	cmd.UI.DisplayKeyValueTable("", lastOperationTable, 3)
+}
+
+func (cmd ServiceCommand) displayUserProvidedServiceInstanceSummary(serviceInstanceSummary v2action.ServiceInstanceSummary) {
+	table := [][]string{
+		{cmd.UI.TranslateText("name:"), serviceInstanceSummary.Name},
+		{cmd.UI.TranslateText("service:"), cmd.UI.TranslateText("user-provided")},
+		{cmd.UI.TranslateText("bound apps:"), strings.Join(serviceInstanceSummary.BoundApplications, ", ")},
+	}
+	cmd.UI.DisplayKeyValueTable("", table, 3)
 }

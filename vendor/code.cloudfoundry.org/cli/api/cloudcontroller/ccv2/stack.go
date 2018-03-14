@@ -10,8 +10,13 @@ import (
 
 // Stack represents a Cloud Controller Stack.
 type Stack struct {
-	GUID        string
-	Name        string
+	// GUID is the unique stack identifier.
+	GUID string
+
+	// Name is the name given to the stack.
+	Name string
+
+	// Description is the description of the stack.
 	Description string
 }
 
@@ -53,11 +58,11 @@ func (client *Client) GetStack(guid string) (Stack, Warnings, error) {
 	return stack, response.Warnings, err
 }
 
-// GetStacks returns a list of Stacks based off of the provided queries.
-func (client *Client) GetStacks(queries ...QQuery) ([]Stack, Warnings, error) {
+// GetStacks returns a list of Stacks based off of the provided filters.
+func (client *Client) GetStacks(filters ...Filter) ([]Stack, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetStacksRequest,
-		Query:       FormatQueryParameters(queries),
+		Query:       ConvertFilterParameters(filters),
 	})
 	if err != nil {
 		return nil, nil, err

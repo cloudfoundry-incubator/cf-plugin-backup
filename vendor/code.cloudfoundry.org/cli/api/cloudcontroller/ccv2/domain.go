@@ -11,11 +11,23 @@ import (
 
 // Domain represents a Cloud Controller Domain.
 type Domain struct {
-	GUID            string
-	Name            string
+	// GUID is the unique domain identifier.
+	GUID string
+
+	// Name is the name given to the domain.
+	Name string
+
+	// RouterGroupGUID is the unique identier of the router group this domain is
+	// assigned to.
 	RouterGroupGUID string
+
+	// RouterGroupType is the type of router group this domain is assigned to. It
+	// can be of type `tcp` or `http`.
 	RouterGroupType constant.RouterGroupType
-	Type            constant.DomainType
+
+	// DomainType is the access type of the domain. It can be either a domain
+	// private to a single org or it can be a domain shared to all orgs.
+	Type constant.DomainType
 }
 
 // UnmarshalJSON helps unmarshal a Cloud Controller Domain response.
@@ -90,10 +102,10 @@ func (client *Client) GetPrivateDomain(domainGUID string) (Domain, Warnings, err
 }
 
 // GetSharedDomains returns the global shared domains.
-func (client *Client) GetSharedDomains(queries ...QQuery) ([]Domain, Warnings, error) {
+func (client *Client) GetSharedDomains(filters ...Filter) ([]Domain, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetSharedDomainsRequest,
-		Query:       FormatQueryParameters(queries),
+		Query:       ConvertFilterParameters(filters),
 	})
 	if err != nil {
 		return []Domain{}, nil, err
@@ -117,10 +129,10 @@ func (client *Client) GetSharedDomains(queries ...QQuery) ([]Domain, Warnings, e
 }
 
 // GetOrganizationPrivateDomains returns the private domains associated with an organization.
-func (client *Client) GetOrganizationPrivateDomains(orgGUID string, queries ...QQuery) ([]Domain, Warnings, error) {
+func (client *Client) GetOrganizationPrivateDomains(orgGUID string, filters ...Filter) ([]Domain, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetOrganizationPrivateDomainsRequest,
-		Query:       FormatQueryParameters(queries),
+		Query:       ConvertFilterParameters(filters),
 		URIParams:   map[string]string{"organization_guid": orgGUID},
 	})
 	if err != nil {

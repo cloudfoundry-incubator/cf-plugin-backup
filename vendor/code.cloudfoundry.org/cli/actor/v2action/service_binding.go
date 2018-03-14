@@ -3,6 +3,7 @@ package v2action
 import (
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 )
 
 // ServiceBinding represents the link between a service instance and an
@@ -41,14 +42,14 @@ func (actor Actor) BindServiceBySpace(appName string, serviceInstanceName string
 // given an application GUID and and service instance GUID.
 func (actor Actor) GetServiceBindingByApplicationAndServiceInstance(appGUID string, serviceInstanceGUID string) (ServiceBinding, Warnings, error) {
 	serviceBindings, warnings, err := actor.CloudControllerClient.GetServiceBindings(
-		ccv2.QQuery{
-			Filter:   ccv2.AppGUIDFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.AppGUIDFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{appGUID},
 		},
-		ccv2.QQuery{
-			Filter:   ccv2.ServiceInstanceGUIDFilter,
-			Operator: ccv2.EqualOperator,
+		ccv2.Filter{
+			Type:     constant.ServiceInstanceGUIDFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{serviceInstanceGUID},
 		},
 	)

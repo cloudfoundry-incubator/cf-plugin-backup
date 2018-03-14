@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/v2action/v2actionfakes"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -122,11 +123,11 @@ var _ = Describe("Org Actions", func() {
 				Expect(warnings).To(ConsistOf("warning-1", "warning-2"))
 
 				Expect(fakeCloudControllerClient.GetOrganizationsCallCount()).To(Equal(1))
-				query := fakeCloudControllerClient.GetOrganizationsArgsForCall(0)
-				Expect(query).To(Equal(
-					[]ccv2.QQuery{{
-						Filter:   ccv2.NameFilter,
-						Operator: ccv2.EqualOperator,
+				filters := fakeCloudControllerClient.GetOrganizationsArgsForCall(0)
+				Expect(filters).To(Equal(
+					[]ccv2.Filter{{
+						Type:     constant.NameFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"some-org"},
 					}}))
 			})
@@ -204,10 +205,10 @@ var _ = Describe("Org Actions", func() {
 
 				job = ccv2.Job{
 					GUID:   "some-job-guid",
-					Status: ccv2.JobStatusFinished,
+					Status: constant.JobStatusFinished,
 				}
 
-				fakeCloudControllerClient.DeleteOrganizationReturns(
+				fakeCloudControllerClient.DeleteOrganizationJobReturns(
 					job, ccv2.Warnings{"delete-org-warning"}, nil)
 
 				fakeCloudControllerClient.PollJobReturns(ccv2.Warnings{"polling-warnings"}, nil)
@@ -218,16 +219,16 @@ var _ = Describe("Org Actions", func() {
 				Expect(deleteOrgErr).ToNot(HaveOccurred())
 
 				Expect(fakeCloudControllerClient.GetOrganizationsCallCount()).To(Equal(1))
-				query := fakeCloudControllerClient.GetOrganizationsArgsForCall(0)
-				Expect(query).To(Equal(
-					[]ccv2.QQuery{{
-						Filter:   ccv2.NameFilter,
-						Operator: ccv2.EqualOperator,
+				filters := fakeCloudControllerClient.GetOrganizationsArgsForCall(0)
+				Expect(filters).To(Equal(
+					[]ccv2.Filter{{
+						Type:     constant.NameFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"some-org"},
 					}}))
 
-				Expect(fakeCloudControllerClient.DeleteOrganizationCallCount()).To(Equal(1))
-				orgGuid := fakeCloudControllerClient.DeleteOrganizationArgsForCall(0)
+				Expect(fakeCloudControllerClient.DeleteOrganizationJobCallCount()).To(Equal(1))
+				orgGuid := fakeCloudControllerClient.DeleteOrganizationJobArgsForCall(0)
 				Expect(orgGuid).To(Equal("some-org-guid"))
 
 				Expect(fakeCloudControllerClient.PollJobCallCount()).To(Equal(1))
@@ -269,7 +270,7 @@ var _ = Describe("Org Actions", func() {
 					nil,
 				)
 
-				fakeCloudControllerClient.DeleteOrganizationReturns(
+				fakeCloudControllerClient.DeleteOrganizationJobReturns(
 					ccv2.Job{},
 					ccv2.Warnings{"delete-org-warning"},
 					returnedErr)
@@ -288,7 +289,7 @@ var _ = Describe("Org Actions", func() {
 					{GUID: "some-org-guid"},
 				}, ccv2.Warnings{"get-org-warning"}, nil)
 
-				fakeCloudControllerClient.DeleteOrganizationReturns(
+				fakeCloudControllerClient.DeleteOrganizationJobReturns(
 					ccv2.Job{}, ccv2.Warnings{"delete-org-warning"}, nil)
 
 				expectedErr = errors.New("Never expected, by anyone")

@@ -7,7 +7,7 @@ import (
 	"code.cloudfoundry.org/bytefmt"
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/actor/v2action"
-	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	"code.cloudfoundry.org/cli/command/commandfakes"
 	"code.cloudfoundry.org/cli/command/translatableerror"
 	. "code.cloudfoundry.org/cli/command/v2"
@@ -53,7 +53,7 @@ var _ = Describe("Restart Command", func() {
 		testUI.TimezoneLocation, err = time.LoadLocation("America/Los_Angeles")
 		Expect(err).NotTo(HaveOccurred())
 
-		fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+		fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 			messages := make(chan *v2action.LogMessage)
 			logErrs := make(chan error)
 			appState := make(chan v2action.ApplicationStateChange)
@@ -130,7 +130,7 @@ var _ = Describe("Restart Command", func() {
 			Context("when the app is started", func() {
 				BeforeEach(func() {
 					fakeActor.GetApplicationByNameAndSpaceReturns(
-						v2action.Application{State: ccv2.ApplicationStarted},
+						v2action.Application{State: constant.ApplicationStarted},
 						v2action.Warnings{"warning-1", "warning-2"},
 						nil,
 					)
@@ -152,7 +152,7 @@ var _ = Describe("Restart Command", func() {
 			Context("when the app is not already started", func() {
 				BeforeEach(func() {
 					fakeActor.GetApplicationByNameAndSpaceReturns(
-						v2action.Application{GUID: "app-guid", State: ccv2.ApplicationStopped},
+						v2action.Application{GUID: "app-guid", State: constant.ApplicationStopped},
 						v2action.Warnings{"warning-1", "warning-2"},
 						nil,
 					)
@@ -165,14 +165,13 @@ var _ = Describe("Restart Command", func() {
 					Expect(testUI.Err).To(Say("warning-2"))
 
 					Expect(fakeActor.RestartApplicationCallCount()).To(Equal(1))
-					app, _, config := fakeActor.RestartApplicationArgsForCall(0)
+					app, _ := fakeActor.RestartApplicationArgsForCall(0)
 					Expect(app.GUID).To(Equal("app-guid"))
-					Expect(config).To(Equal(fakeConfig))
 				})
 
 				Context("when passed an appStarting message", func() {
 					BeforeEach(func() {
-						fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+						fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 							messages := make(chan *v2action.LogMessage)
 							logErrs := make(chan error)
 							appState := make(chan v2action.ApplicationStateChange)
@@ -206,7 +205,7 @@ var _ = Describe("Restart Command", func() {
 
 				Context("when passed a log message", func() {
 					BeforeEach(func() {
-						fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+						fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 							messages := make(chan *v2action.LogMessage)
 							logErrs := make(chan error)
 							appState := make(chan v2action.ApplicationStateChange)
@@ -239,7 +238,7 @@ var _ = Describe("Restart Command", func() {
 				Context("when passed an log err", func() {
 					Context("NOAA connection times out/closes", func() {
 						BeforeEach(func() {
-							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 								messages := make(chan *v2action.LogMessage)
 								logErrs := make(chan error)
 								appState := make(chan v2action.ApplicationStateChange)
@@ -313,7 +312,7 @@ var _ = Describe("Restart Command", func() {
 
 						BeforeEach(func() {
 							expectedErr = errors.New("err log message")
-							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 								messages := make(chan *v2action.LogMessage)
 								logErrs := make(chan error)
 								appState := make(chan v2action.ApplicationStateChange)
@@ -343,7 +342,7 @@ var _ = Describe("Restart Command", func() {
 				Context("when passed a warning", func() {
 					Context("while NOAA is still logging", func() {
 						BeforeEach(func() {
-							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 								messages := make(chan *v2action.LogMessage)
 								logErrs := make(chan error)
 								appState := make(chan v2action.ApplicationStateChange)
@@ -373,7 +372,7 @@ var _ = Describe("Restart Command", func() {
 
 					Context("while NOAA is no longer logging", func() {
 						BeforeEach(func() {
-							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+							fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 								messages := make(chan *v2action.LogMessage)
 								logErrs := make(chan error)
 								appState := make(chan v2action.ApplicationStateChange)
@@ -412,7 +411,7 @@ var _ = Describe("Restart Command", func() {
 					var apiErr error
 
 					BeforeEach(func() {
-						fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+						fakeActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 							messages := make(chan *v2action.LogMessage)
 							logErrs := make(chan error)
 							appState := make(chan v2action.ApplicationStateChange)
@@ -536,7 +535,7 @@ var _ = Describe("Restart Command", func() {
 						applicationSummary.RunningInstances = []v2action.ApplicationInstanceWithStats{
 							{
 								ID:          0,
-								State:       v2action.ApplicationInstanceState(ccv2.ApplicationInstanceRunning),
+								State:       v2action.ApplicationInstanceState(constant.ApplicationInstanceRunning),
 								Since:       1403140717.984577,
 								CPU:         0.73,
 								Disk:        50 * bytefmt.MEGABYTE,

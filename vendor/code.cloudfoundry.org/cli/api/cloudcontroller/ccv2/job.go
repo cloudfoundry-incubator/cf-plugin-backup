@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/cli/api/cloudcontroller"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/internal"
 )
 
@@ -20,31 +21,23 @@ type Reader interface {
 	io.Reader
 }
 
-// JobStatus is the current state of a job.
-type JobStatus string
-
-const (
-	// JobStatusFailed is when the job is no longer running due to a failure.
-	JobStatusFailed JobStatus = "failed"
-
-	// JobStatusFinished is when the job is no longer and it was successful.
-	JobStatusFinished JobStatus = "finished"
-
-	// JobStatusQueued is when the job is waiting to be run.
-	JobStatusQueued JobStatus = "queued"
-
-	// JobStatusRunning is when the job is running.
-	JobStatusRunning JobStatus = "running"
-)
-
 // Job represents a Cloud Controller Job.
 type Job struct {
-	Error        string
+
+	// Error is the error a job returns if it failed. It is otherwise empty.
+	Error string
+
+	// ErrorDetails is a detailed description of a job failure returned by the
+	// Cloud Controller.
 	ErrorDetails struct {
 		Description string
 	}
-	GUID   string
-	Status JobStatus
+
+	// GUID is the unique job identifier.
+	GUID string
+
+	// Status is the current state of the job.
+	Status constant.JobStatus
 }
 
 // UnmarshalJSON helps unmarshal a Cloud Controller Job response.
@@ -67,18 +60,67 @@ func (job *Job) UnmarshalJSON(data []byte) error {
 	job.Error = ccJob.Entity.Error
 	job.ErrorDetails.Description = ccJob.Entity.ErrorDetails.Description
 	job.GUID = ccJob.Entity.GUID
-	job.Status = JobStatus(ccJob.Entity.Status)
+	job.Status = constant.JobStatus(ccJob.Entity.Status)
 	return nil
 }
 
 // Finished returns true when the job has completed successfully.
 func (job Job) Finished() bool {
-	return job.Status == JobStatusFinished
+	return job.Status == constant.JobStatusFinished
 }
 
 // Failed returns true when the job has completed with an error/failure.
 func (job Job) Failed() bool {
-	return job.Status == JobStatusFailed
+	return job.Status == constant.JobStatusFailed
+}
+
+// DeleteOrganizationJob deletes the Organization associated with the provided
+// GUID. It will return the Cloud Controller job that is assigned to the
+// Organization deletion.
+func (client *Client) DeleteOrganizationJob(guid string) (Job, Warnings, error) {
+	request, err := client.newHTTPRequest(requestOptions{
+		RequestName: internal.DeleteOrganizationRequest,
+		URIParams:   Params{"organization_guid": guid},
+		Query: url.Values{
+			"recursive": {"true"},
+			"async":     {"true"},
+		},
+	})
+	if err != nil {
+		return Job{}, nil, err
+	}
+
+	var job Job
+	response := cloudcontroller.Response{
+		Result: &job,
+	}
+
+	err = client.connection.Make(request, &response)
+	return job, response.Warnings, err
+}
+
+// DeleteSpaceJob deletes the Space associated with the provided GUID. It will
+// return the Cloud Controller job that is assigned to the Space deletion.
+func (client *Client) DeleteSpaceJob(guid string) (Job, Warnings, error) {
+	request, err := client.newHTTPRequest(requestOptions{
+		RequestName: internal.DeleteSpaceRequest,
+		URIParams:   Params{"space_guid": guid},
+		Query: url.Values{
+			"recursive": {"true"},
+			"async":     {"true"},
+		},
+	})
+	if err != nil {
+		return Job{}, nil, err
+	}
+
+	var job Job
+	response := cloudcontroller.Response{
+		Result: &job,
+	}
+
+	err = client.connection.Make(request, &response)
+	return job, response.Warnings, err
 }
 
 // GetJob returns a job for the provided GUID.
@@ -160,6 +202,9 @@ func (client *Client) UploadApplicationPackage(appGUID string, existingResources
 	return client.uploadNewAndExistingResources(appGUID, existingResources, newResources, newResourcesLength)
 }
 
+// UploadDroplet defines and uploads a previously staged droplet that an
+// application will run, using a multipart PUT request. The uploaded file
+// should be a gzipped tar file.
 func (client *Client) UploadDroplet(appGUID string, droplet io.Reader, dropletLength int64) (Job, Warnings, error) {
 	contentLength, err := client.calculateDropletRequestSize(dropletLength)
 	if err != nil {

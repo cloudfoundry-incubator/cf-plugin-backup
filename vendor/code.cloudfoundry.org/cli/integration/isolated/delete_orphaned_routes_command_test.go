@@ -32,7 +32,7 @@ var _ = Describe("delete-orphaned-routes command", func() {
 			domainName = helpers.DomainName()
 			appName = helpers.PrefixedRandomName("APP")
 
-			setupCF(orgName, spaceName)
+			helpers.SetupCF(orgName, spaceName)
 			domain = helpers.NewDomain(orgName, domainName)
 			domain.Create()
 		})
@@ -112,7 +112,7 @@ var _ = Describe("delete-orphaned-routes command", func() {
 				session := helpers.CF("delete-orphaned-routes", "-f")
 
 				for i := 0; i < 51; i++ {
-					Eventually(session.Out).Should(Say(fmt.Sprintf("Deleting route orphan-multi-page-%d.%s...", i, domainName)))
+					Eventually(session).Should(Say(fmt.Sprintf("Deleting route orphan-multi-page-%d.%s...", i, domainName)))
 				}
 				Eventually(session).Should(Exit(0))
 			})

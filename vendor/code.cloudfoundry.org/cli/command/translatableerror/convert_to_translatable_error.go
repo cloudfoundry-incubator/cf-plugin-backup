@@ -73,6 +73,8 @@ func ConvertToTranslatableError(err error) error {
 		return NotLoggedInError(e)
 	case actionerror.OrganizationNotFoundError:
 		return OrganizationNotFoundError(e)
+	case actionerror.PasswordGrantTypeLogoutRequiredError:
+		return PasswordGrantTypeLogoutRequiredError(e)
 	case actionerror.PluginCommandsConflictError:
 		return PluginCommandsConflictError(e)
 	case actionerror.PluginInvalidError:
@@ -99,6 +101,11 @@ func ConvertToTranslatableError(err error) error {
 		return SecurityGroupNotFoundError(e)
 	case actionerror.ServiceInstanceNotFoundError:
 		return ServiceInstanceNotFoundError(e)
+	case actionerror.ServiceInstanceNotShareableError:
+		return ServiceInstanceNotShareableError{
+			FeatureFlagEnabled:          e.FeatureFlagEnabled,
+			ServiceBrokerSharingEnabled: e.ServiceBrokerSharingEnabled,
+		}
 	case actionerror.ServiceInstanceNotSharedToSpaceError:
 		return ServiceInstanceNotSharedToSpaceError{ServiceInstanceName: e.ServiceInstanceName}
 	case actionerror.SharedServiceInstanceNotFoundError:

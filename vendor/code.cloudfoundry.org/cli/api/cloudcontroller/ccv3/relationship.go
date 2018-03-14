@@ -111,6 +111,32 @@ func (client *Client) RevokeIsolationSegmentFromOrganization(isolationSegmentGUI
 	return response.Warnings, err
 }
 
+// SetApplicationDroplet sets the specified droplet on the given application.
+func (client *Client) SetApplicationDroplet(appGUID string, dropletGUID string) (Relationship, Warnings, error) {
+	relationship := Relationship{GUID: dropletGUID}
+	bodyBytes, err := json.Marshal(relationship)
+	if err != nil {
+		return Relationship{}, nil, err
+	}
+
+	request, err := client.newHTTPRequest(requestOptions{
+		RequestName: internal.PatchApplicationCurrentDropletRequest,
+		URIParams:   map[string]string{"app_guid": appGUID},
+		Body:        bytes.NewReader(bodyBytes),
+	})
+	if err != nil {
+		return Relationship{}, nil, err
+	}
+
+	var responseRelationship Relationship
+	response := cloudcontroller.Response{
+		Result: &responseRelationship,
+	}
+	err = client.connection.Make(request, &response)
+
+	return responseRelationship, response.Warnings, err
+}
+
 // GetOrganizationDefaultIsolationSegment returns the relationship between an
 // organization and it's default isolation segment.
 func (client *Client) GetOrganizationDefaultIsolationSegment(orgGUID string) (Relationship, Warnings, error) {
@@ -157,17 +183,18 @@ func (client *Client) PatchOrganizationDefaultIsolationSegment(orgGUID string, i
 	return relationship, response.Warnings, err
 }
 
-// UnshareServiceInstanceFromSpace will delete the sharing relationship between
-// the service instance and the space provided.
-func (client *Client) UnshareServiceInstanceFromSpace(serviceInstanceGUID string, spaceGUID string) (Warnings, error) {
-	request, _ := client.newHTTPRequest(requestOptions{
-		RequestName: internal.DeleteServiceInstanceRelationshipSharedSpacesRequest,
+// DeleteServiceInstanceRelationshipsSharedSpace will delete the sharing relationship
+// between the service instance and the shared-to space provided.
+func (client *Client) DeleteServiceInstanceRelationshipsSharedSpace(serviceInstanceGUID string, spaceGUID string) (Warnings, error) {
+	request, err := client.newHTTPRequest(requestOptions{
+		RequestName: internal.DeleteServiceInstanceRelationshipsSharedSpaceRequest,
 		URIParams:   internal.Params{"service_instance_guid": serviceInstanceGUID, "space_guid": spaceGUID},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	response := cloudcontroller.Response{}
-
-	err := client.connection.Make(request, &response)
-
+	err = client.connection.Make(request, &response)
 	return response.Warnings, err
 }

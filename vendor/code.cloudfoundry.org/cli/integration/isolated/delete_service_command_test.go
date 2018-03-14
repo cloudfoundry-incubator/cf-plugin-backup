@@ -18,7 +18,7 @@ var _ = Describe("delete-service command", func() {
 		BeforeEach(func() {
 			orgName = helpers.NewOrgName()
 			spaceName = helpers.NewSpaceName()
-			setupCF(orgName, spaceName)
+			helpers.SetupCF(orgName, spaceName)
 		})
 
 		AfterEach(func() {
@@ -37,12 +37,12 @@ var _ = Describe("delete-service command", func() {
 			)
 
 			BeforeEach(func() {
-				domain = defaultSharedDomain()
+				domain = helpers.DefaultSharedDomain()
 				service = helpers.PrefixedRandomName("SERVICE")
 				servicePlan = helpers.PrefixedRandomName("SERVICE-PLAN")
 				broker = helpers.NewServiceBroker(helpers.NewServiceBrokerName(), helpers.NewAssets().ServiceBroker, domain, service, servicePlan)
 				broker.Push()
-				broker.Configure()
+				broker.Configure(true)
 				broker.Create()
 
 				Eventually(helpers.CF("enable-service-access", service)).Should(Exit(0))
@@ -67,7 +67,7 @@ var _ = Describe("delete-service command", func() {
 
 			It("should display an error message that the service instance's keys, bindings, and shares must first be deleted", func() {
 				session := helpers.CF("delete-service", serviceInstanceName, "-f")
-				Eventually(session.Out).Should(Say("Cannot delete service instance. Service keys, bindings, and shares must first be deleted."))
+				Eventually(session).Should(Say("Cannot delete service instance. Service keys, bindings, and shares must first be deleted."))
 				Eventually(session).Should(Exit(1))
 			})
 		})

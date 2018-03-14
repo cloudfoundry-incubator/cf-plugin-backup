@@ -7,8 +7,14 @@ import (
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/internal"
 )
 
+// SpaceQuota represents the Cloud Controller configured quota assigned to the
+// space.
 type SpaceQuota struct {
+
+	// GUID is the unique space quota identifier.
 	GUID string
+
+	// Name is the name given to the space quota.
 	Name string
 }
 
@@ -29,8 +35,8 @@ func (spaceQuota *SpaceQuota) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// GetSpaceQuota returns a Space Quota.
-func (client *Client) GetSpaceQuota(guid string) (SpaceQuota, Warnings, error) {
+// GetSpaceQuotaDefinition returns a Space Quota.
+func (client *Client) GetSpaceQuotaDefinition(guid string) (SpaceQuota, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetSpaceQuotaDefinitionRequest,
 		URIParams:   Params{"space_quota_guid": guid},

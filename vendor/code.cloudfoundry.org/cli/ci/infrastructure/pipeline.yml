@@ -10,7 +10,7 @@ groups:
   - delete-infrastructure
 
 resources:
-- name: freshen-((stack_name))
+- name: freshen-((stack-name))
   type: time
   source:
     start: 09:00 PM
@@ -42,25 +42,25 @@ resources:
   type: git
   source:
     uri: git@github.com:cloudfoundry/cli-private
-    private_key: ((cli-private-github-private-key-write))
+    private_key: ((cli-private-github-private-key))
     branch: master
     paths:
-    - ci/infrastructure/((stack_name))/bbl-state.json
+    - ci/infrastructure/((stack-name))/bbl-state.json
 - name: cf-state
   type: git
   source:
     uri: git@github.com:cloudfoundry/cli-private
-    private_key: ((cli-private-github-private-key-write))
+    private_key: ((cli-private-github-private-key))
     branch: master
     paths:
-    - ci/infrastructure/((stack_name))/deployment-vars.yml
+    - ci/infrastructure/((stack-name))/deployment-vars.yml
 
 jobs:
 - name: setup-infrastructure
-  serial_groups: [((stack_name))]
+  serial_groups: [((stack-name))]
   build_logs_to_retain: 100
   plan:
-  - get: freshen-((stack_name))
+  - get: freshen-((stack-name))
     trigger: true
   - aggregate:
     - get: cf-deployment-concourse-tasks
@@ -72,15 +72,15 @@ jobs:
       env-repo: state
     params:
       BBL_IAAS: gcp
-      BBL_GCP_SERVICE_ACCOUNT_KEY: ((google_account_creds))
-      BBL_GCP_PROJECT_ID: ((gcp_project))
+      BBL_GCP_SERVICE_ACCOUNT_KEY: ((google-account-creds))
+      BBL_GCP_PROJECT_ID: ((gcp-project))
       BBL_GCP_REGION: us-central1
       BBL_GCP_ZONE: us-central1-f
-      BBL_LB_CERT: ((ssl_cert))
-      BBL_LB_KEY: ((ssl_cert_private_key))
-      LB_DOMAIN: ((stack_name)).cli.fun
-      BBL_ENV_NAME: ((stack_name))
-      BBL_STATE_DIR: ci/infrastructure/((stack_name))
+      BBL_LB_CERT: ((ssl-cert))
+      BBL_LB_KEY: ((ssl-cert-private-key))
+      LB_DOMAIN: ((stack-name)).cli.fun
+      BBL_ENV_NAME: ((stack-name))
+      BBL_STATE_DIR: ci/infrastructure/((stack-name))
     ensure:
       put: state
       params:
@@ -88,7 +88,7 @@ jobs:
         rebase: true
 
 - name: deploy-cf
-  serial_groups: [((stack_name))]
+  serial_groups: [((stack-name))]
   build_logs_to_retain: 100
   plan:
   - aggregate:
@@ -106,26 +106,31 @@ jobs:
       env-repo: state
     params:
       INFRASTRUCTURE: google
-      BBL_STATE_DIR: ci/infrastructure/((stack_name))
+      BBL_STATE_DIR: ci/infrastructure/((stack-name))
+  - task: create-vars-file
+    file: cli-ci/ci/infrastructure/tasks/create-vars-file.yml
+    params:
+      CLIENT_SECRET: ((client-secret))
   - task: copy-ops-files
     file: cli-ci/ci/infrastructure/tasks/combine-inputs.yml
     input_mapping:
       input1: ops-files
       input2: cli-ci
     params:
-      COPY_PATHS: "input1/operations/scale-to-one-az.yml input1/operations/test/add-persistent-isolation-segment-diego-cell.yml input1/operations/use-compiled-releases.yml input2/ci/infrastructure/operations/cli-isolation-cell-overrides.yml input2/ci/infrastructure/operations/default-app-memory.yml input2/ci/infrastructure/operations/diego-cell-instances.yml input2/ci/infrastructure/operations/skip-ssl-override.yml input2/ci/infrastructure/operations/uaa-vm_type-override.yml input2/ci/infrastructure/operations/capi-release-override.yml"
+      COPY_PATHS: "input1/operations/scale-to-one-az.yml input1/operations/test/add-persistent-isolation-segment-diego-cell.yml input1/operations/use-compiled-releases.yml input2/ci/infrastructure/operations/cli-isolation-cell-overrides.yml input2/ci/infrastructure/operations/default-app-memory.yml input2/ci/infrastructure/operations/diego-cell-instances.yml input2/ci/infrastructure/operations/skip-ssl-override.yml input2/ci/infrastructure/operations/uaa-vm_type-override.yml input2/ci/infrastructure/operations/add-uaa-client-credentials.yml"
   - task: deploy-cf
     file: cf-deployment-concourse-tasks/bosh-deploy/task.yml
     input_mapping:
       env-repo: state
       vars-store: cf-state
-      vars-files: cf-state
+      vars-files: vars_path
       ops-files: combine_inputs_output
     params:
-      SYSTEM_DOMAIN: ((stack_name)).cli.fun
-      OPS_FILES: "add-persistent-isolation-segment-diego-cell.yml use-compiled-releases.yml cli-isolation-cell-overrides.yml default-app-memory.yml skip-ssl-override.yml scale-to-one-az.yml diego-cell-instances.yml uaa-vm_type-override.yml capi-release-override.yml"
-      VARS_STORE_FILE: ci/infrastructure/((stack_name))/deployment-vars.yml
-      BBL_STATE_DIR: ci/infrastructure/((stack_name))
+      SYSTEM_DOMAIN: ((stack-name)).cli.fun
+      OPS_FILES: "add-persistent-isolation-segment-diego-cell.yml use-compiled-releases.yml cli-isolation-cell-overrides.yml default-app-memory.yml skip-ssl-override.yml scale-to-one-az.yml diego-cell-instances.yml uaa-vm_type-override.yml add-uaa-client-credentials.yml"
+      VARS_STORE_FILE: ci/infrastructure/((stack-name))/deployment-vars.yml
+      VARS_FILES: vars.yml
+      BBL_STATE_DIR: ci/infrastructure/((stack-name))
     ensure:
       put: cf-state
       params:
@@ -136,11 +141,11 @@ jobs:
     input_mapping:
       env-repo: state
     params:
-      BBL_STATE_DIR: ci/infrastructure/((stack_name))
+      BBL_STATE_DIR: ci/infrastructure/((stack-name))
       CLEAN_ALL: true
 
 - name: delete-cf
-  serial_groups: [((stack_name))]
+  serial_groups: [((stack-name))]
   build_logs_to_retain: 100
   plan:
   - aggregate:
@@ -151,10 +156,10 @@ jobs:
     input_mapping:
       env-repo: state
     params:
-      BBL_STATE_DIR: ci/infrastructure/((stack_name))
+      BBL_STATE_DIR: ci/infrastructure/((stack-name))
 
 - name: delete-infrastructure
-  serial_groups: [((stack_name))]
+  serial_groups: [((stack-name))]
   build_logs_to_retain: 100
   plan:
   - aggregate:
@@ -165,7 +170,7 @@ jobs:
     input_mapping:
       env-repo: state
     params:
-      BBL_STATE_DIR: ci/infrastructure/((stack_name))
+      BBL_STATE_DIR: ci/infrastructure/((stack-name))
     ensure:
       put: state
       params:

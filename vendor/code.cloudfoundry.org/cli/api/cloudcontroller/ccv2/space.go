@@ -9,10 +9,21 @@ import (
 
 // Space represents a Cloud Controller Space.
 type Space struct {
-	GUID                     string
-	OrganizationGUID         string
-	Name                     string
-	AllowSSH                 bool
+	// GUID is the unique space identifier.
+	GUID string
+
+	// OrganizationGUID is the unique identifier of the organization this space
+	// belongs to.
+	OrganizationGUID string
+
+	// Name is the name given to the space.
+	Name string
+
+	// AllowSSH specifies whether SSH is enabled for this space.
+	AllowSSH bool
+
+	// SpaceQuotaDefinitionGUID is the unique identifier of the space quota
+	// defined for this space.
 	SpaceQuotaDefinitionGUID string
 }
 
@@ -42,9 +53,9 @@ func (space *Space) UnmarshalJSON(data []byte) error {
 //go:generate go run $GOPATH/src/code.cloudfoundry.org/cli/util/codegen/generate.go Space codetemplates/delete_async_by_guid.go.template delete_space.go
 //go:generate go run $GOPATH/src/code.cloudfoundry.org/cli/util/codegen/generate.go Space codetemplates/delete_async_by_guid_test.go.template delete_space_test.go
 
-// GetSpaces returns a list of Spaces based off of the provided queries.
-func (client *Client) GetSpaces(queries ...QQuery) ([]Space, Warnings, error) {
-	params := FormatQueryParameters(queries)
+// GetSpaces returns a list of Spaces based off of the provided filters.
+func (client *Client) GetSpaces(filters ...Filter) ([]Space, Warnings, error) {
+	params := ConvertFilterParameters(filters)
 	params.Add("order-by", "name")
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetSpacesRequest,
@@ -70,9 +81,9 @@ func (client *Client) GetSpaces(queries ...QQuery) ([]Space, Warnings, error) {
 	return fullSpacesList, warnings, err
 }
 
-// GetStagingSpacesBySecurityGroup returns a list of Spaces based on the provided
+// GetSecurityGroupStagingSpaces returns a list of Spaces based on the provided
 // SecurityGroup GUID.
-func (client *Client) GetStagingSpacesBySecurityGroup(securityGroupGUID string) ([]Space, Warnings, error) {
+func (client *Client) GetSecurityGroupStagingSpaces(securityGroupGUID string) ([]Space, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetSecurityGroupStagingSpacesRequest,
 		URIParams:   map[string]string{"security_group_guid": securityGroupGUID},
@@ -97,11 +108,11 @@ func (client *Client) GetStagingSpacesBySecurityGroup(securityGroupGUID string) 
 	return fullSpacesList, warnings, err
 }
 
-// GetRunningSpacesBySecurityGroup returns a list of Spaces based on the provided
+// GetSecurityGroupSpaces returns a list of Spaces based on the provided
 // SecurityGroup GUID.
-func (client *Client) GetRunningSpacesBySecurityGroup(securityGroupGUID string) ([]Space, Warnings, error) {
+func (client *Client) GetSecurityGroupSpaces(securityGroupGUID string) ([]Space, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
-		RequestName: internal.GetSecurityGroupRunningSpacesRequest,
+		RequestName: internal.GetSecurityGroupSpacesRequest,
 		URIParams:   map[string]string{"security_group_guid": securityGroupGUID},
 	})
 	if err != nil {

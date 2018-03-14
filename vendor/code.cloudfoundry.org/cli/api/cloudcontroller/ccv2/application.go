@@ -13,24 +13,6 @@ import (
 	"code.cloudfoundry.org/cli/types"
 )
 
-// ApplicationState is the running state of an application.
-type ApplicationState string
-
-const (
-	ApplicationStarted ApplicationState = "STARTED"
-	ApplicationStopped ApplicationState = "STOPPED"
-)
-
-// ApplicationPackageState is the staging state of application bits.
-type ApplicationPackageState string
-
-const (
-	ApplicationPackageStaged  ApplicationPackageState = "STAGED"
-	ApplicationPackagePending ApplicationPackageState = "PENDING"
-	ApplicationPackageFailed  ApplicationPackageState = "FAILED"
-	ApplicationPackageUnknown ApplicationPackageState = "UNKNOWN"
-)
-
 // Application represents a Cloud Controller Application.
 type Application struct {
 	// Buildpack is the buildpack set by the user.
@@ -81,7 +63,7 @@ type Application struct {
 	Name string
 
 	// PackageState represents the staging state of the application bits.
-	PackageState ApplicationPackageState
+	PackageState constant.ApplicationPackageState
 
 	// PackageUpdatedAt is the last time the app bits were updated. In RFC3339.
 	PackageUpdatedAt time.Time
@@ -100,7 +82,7 @@ type Application struct {
 	StagingFailedReason string
 
 	// State is the desired state of the application.
-	State ApplicationState
+	State constant.ApplicationState
 }
 
 // DockerCredentials are the authentication credentials to pull a docker image
@@ -131,7 +113,7 @@ func (application Application) MarshalJSON() ([]byte, error) {
 		Name                    string                              `json:"name,omitempty"`
 		SpaceGUID               string                              `json:"space_guid,omitempty"`
 		StackGUID               string                              `json:"stack_guid,omitempty"`
-		State                   ApplicationState                    `json:"state,omitempty"`
+		State                   constant.ApplicationState           `json:"state,omitempty"`
 	}{
 		DockerImage:          application.DockerImage,
 		EnvironmentVariables: application.EnvironmentVariables,
@@ -207,8 +189,7 @@ func (application *Application) UnmarshalJSON(data []byte) error {
 		} `json:"entity"`
 	}
 
-	decoder := json.NewDecoder(bytes.NewBuffer(data))
-	decoder.UseNumber()
+	decoder := cloudcontroller.NewJSONDecoder(data)
 	err := decoder.Decode(&ccApp)
 	if err != nil {
 		return err
@@ -227,11 +208,11 @@ func (application *Application) UnmarshalJSON(data []byte) error {
 	application.HealthCheckType = constant.ApplicationHealthCheckType(ccApp.Entity.HealthCheckType)
 	application.Memory.ParseUint64Value(ccApp.Entity.Memory)
 	application.Name = ccApp.Entity.Name
-	application.PackageState = ApplicationPackageState(ccApp.Entity.PackageState)
+	application.PackageState = constant.ApplicationPackageState(ccApp.Entity.PackageState)
 	application.StackGUID = ccApp.Entity.StackGUID
 	application.StagingFailedDescription = ccApp.Entity.StagingFailedDescription
 	application.StagingFailedReason = ccApp.Entity.StagingFailedReason
-	application.State = ApplicationState(ccApp.Entity.State)
+	application.State = constant.ApplicationState(ccApp.Entity.State)
 
 	if len(ccApp.Entity.EnvironmentVariables) > 0 {
 		envVariableValues := map[string]string{}
@@ -297,11 +278,11 @@ func (client *Client) GetApplication(guid string) (Application, Warnings, error)
 }
 
 // GetApplications returns back a list of Applications based off of the
-// provided queries.
-func (client *Client) GetApplications(queries ...QQuery) ([]Application, Warnings, error) {
+// provided filters.
+func (client *Client) GetApplications(filters ...Filter) ([]Application, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetAppsRequest,
-		Query:       FormatQueryParameters(queries),
+		Query:       ConvertFilterParameters(filters),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -368,13 +349,13 @@ func (client *Client) RestageApplication(app Application) (Application, Warnings
 	return restagedApp, response.Warnings, err
 }
 
-// GetRouteApplications returns a list of Applications associated with a route
-// GUID, filtered by provided queries.
-func (client *Client) GetRouteApplications(routeGUID string, queryParams ...QQuery) ([]Application, Warnings, error) {
+// GetRouteApplications returns a list of Applications based off a route
+// GUID and the provided filters.
+func (client *Client) GetRouteApplications(routeGUID string, filters ...Filter) ([]Application, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
 		RequestName: internal.GetRouteAppsRequest,
 		URIParams:   map[string]string{"route_guid": routeGUID},
-		Query:       FormatQueryParameters(queryParams),
+		Query:       ConvertFilterParameters(filters),
 	})
 	if err != nil {
 		return nil, nil, err

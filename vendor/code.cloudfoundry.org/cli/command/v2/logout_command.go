@@ -2,17 +2,33 @@ package v2
 
 import (
 	"code.cloudfoundry.org/cli/command"
-	"code.cloudfoundry.org/cli/command/translatableerror"
 )
 
 type LogoutCommand struct {
 	usage interface{} `usage:"CF_NAME logout"`
+
+	UI     command.UI
+	Config command.Config
 }
 
-func (LogoutCommand) Setup(config command.Config, ui command.UI) error {
+func (cmd *LogoutCommand) Setup(config command.Config, ui command.UI) error {
+	cmd.UI = ui
+	cmd.Config = config
 	return nil
 }
 
-func (LogoutCommand) Execute(args []string) error {
-	return translatableerror.UnrefactoredCommandError{}
+func (cmd LogoutCommand) Execute(args []string) error {
+	user, err := cmd.Config.CurrentUser()
+	if err != nil {
+		return err
+	}
+
+	cmd.UI.DisplayText("Logging out {{.Username}}...",
+		map[string]interface{}{
+			"Username": user.Name,
+		})
+	cmd.Config.UnsetUserInformation()
+	cmd.UI.DisplayOK()
+
+	return nil
 }

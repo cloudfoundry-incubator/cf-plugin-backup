@@ -29,8 +29,8 @@ var _ = Describe("service-key command", func() {
 		servicePlan = helpers.PrefixedRandomName("SERVICE-PLAN")
 		serviceInstance = helpers.PrefixedRandomName("si")
 
-		setupCF(org, space)
-		domain = defaultSharedDomain()
+		helpers.SetupCF(org, space)
+		domain = helpers.DefaultSharedDomain()
 	})
 
 	AfterEach(func() {
@@ -41,7 +41,7 @@ var _ = Describe("service-key command", func() {
 		BeforeEach(func() {
 			broker = helpers.NewServiceBroker(helpers.NewServiceBrokerName(), helpers.NewAssets().ServiceBroker, domain, service, servicePlan)
 			broker.Push()
-			broker.Configure()
+			broker.Configure(true)
 			broker.Create()
 
 			Eventually(helpers.CF("enable-service-access", service)).Should(Exit(0))
@@ -54,8 +54,8 @@ var _ = Describe("service-key command", func() {
 
 		It("outputs an error message and exits 1", func() {
 			session := helpers.CF("service-key", serviceInstance, "some-service-key")
-			Eventually(session.Out).Should(Say("FAILED"))
-			Eventually(session.Out).Should(Say(fmt.Sprintf("No service key some-service-key found for service instance %s", serviceInstance)))
+			Eventually(session).Should(Say("FAILED"))
+			Eventually(session).Should(Say(fmt.Sprintf("No service key some-service-key found for service instance %s", serviceInstance)))
 			Eventually(session).Should(Exit(1))
 		})
 

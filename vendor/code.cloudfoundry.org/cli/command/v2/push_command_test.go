@@ -11,7 +11,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/actor/pushaction"
 	"code.cloudfoundry.org/cli/actor/v2action"
-	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	"code.cloudfoundry.org/cli/command/commandfakes"
 	"code.cloudfoundry.org/cli/command/flag"
 	"code.cloudfoundry.org/cli/command/translatableerror"
@@ -28,7 +28,7 @@ import (
 	. "github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("v2-push Command", func() {
+var _ = Describe("push Command", func() {
 	var (
 		cmd              V2PushCommand
 		testUI           *ui.UI
@@ -121,7 +121,7 @@ var _ = Describe("v2-push Command", func() {
 					BeforeEach(func() {
 						appConfigs = []pushaction.ApplicationConfig{
 							{
-								CurrentApplication: pushaction.Application{Application: v2action.Application{Name: appName, State: ccv2.ApplicationStarted}},
+								CurrentApplication: pushaction.Application{Application: v2action.Application{Name: appName, State: constant.ApplicationStarted}},
 								DesiredApplication: pushaction.Application{Application: v2action.Application{Name: appName}},
 								CurrentRoutes: []v2action.Route{
 									{Host: "route1", Domain: v2action.Domain{Name: "example.com"}},
@@ -187,7 +187,7 @@ var _ = Describe("v2-push Command", func() {
 								return configStream, eventStream, warningsStream, errorStream
 							}
 
-							fakeRestartActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient, config v2action.Config) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
+							fakeRestartActor.RestartApplicationStub = func(app v2action.Application, client v2action.NOAAClient) (<-chan *v2action.LogMessage, <-chan error, <-chan v2action.ApplicationStateChange, <-chan string, <-chan error) {
 								messages := make(chan *v2action.LogMessage)
 								logErrs := make(chan error)
 								appState := make(chan v2action.ApplicationStateChange)
@@ -270,7 +270,7 @@ var _ = Describe("v2-push Command", func() {
 
 							BeforeEach(func() {
 								var err error
-								tmpDir, err = ioutil.TempDir("", "v2-push-command-test")
+								tmpDir, err = ioutil.TempDir("", "push-command-test")
 								Expect(err).ToNot(HaveOccurred())
 
 								// OS X uses weird symlinks that causes problems for some tests
@@ -510,7 +510,7 @@ var _ = Describe("v2-push Command", func() {
 
 							BeforeEach(func() {
 								var err error
-								tmpDir, err = ioutil.TempDir("", "v2-push-command-test")
+								tmpDir, err = ioutil.TempDir("", "push-command-test")
 								Expect(err).ToNot(HaveOccurred())
 
 								// OS X uses weird symlinks that causes problems for some tests
@@ -612,7 +612,7 @@ var _ = Describe("v2-push Command", func() {
 								Expect(testUI.Out).To(Say("log message 2"))
 
 								Expect(fakeRestartActor.RestartApplicationCallCount()).To(Equal(1))
-								appConfig, _, _ := fakeRestartActor.RestartApplicationArgsForCall(0)
+								appConfig, _ := fakeRestartActor.RestartApplicationArgsForCall(0)
 								Expect(appConfig).To(Equal(updatedConfig.CurrentApplication.Application))
 							})
 

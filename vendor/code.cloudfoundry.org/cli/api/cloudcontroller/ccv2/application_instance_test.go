@@ -5,6 +5,7 @@ import (
 
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	. "code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/ghttp"
@@ -17,10 +18,25 @@ var _ = Describe("Application Instance", func() {
 		client = NewTestClient()
 	})
 
-	Describe("GetApplicationInstancesByApplication", func() {
+	Describe("GetApplicationApplicationInstances", func() {
+		var (
+			appGUID string
+
+			instances  map[int]ApplicationInstance
+			warnings   Warnings
+			executeErr error
+		)
+
+		BeforeEach(func() {
+			appGUID = "some-app-guid"
+		})
+
+		JustBeforeEach(func() {
+			instances, warnings, executeErr = client.GetApplicationApplicationInstances(appGUID)
+		})
+
 		Context("when the app is found", func() {
 			BeforeEach(func() {
-
 				response := `{
 					"0": {
 						"state": "RUNNING",
@@ -43,25 +59,23 @@ var _ = Describe("Application Instance", func() {
 			})
 
 			It("returns the app instances and warnings", func() {
-				instances, warnings, err := client.GetApplicationInstancesByApplication("some-app-guid")
-				Expect(err).ToNot(HaveOccurred())
+				Expect(executeErr).ToNot(HaveOccurred())
 				Expect(warnings).To(ConsistOf(Warnings{"this is a warning"}))
-				Expect(instances).To(HaveLen(2))
-
-				Expect(instances[0]).To(Equal(ApplicationInstance{
-					ID:      0,
-					State:   ApplicationInstanceRunning,
-					Since:   1403140717.984577,
-					Details: "some detail",
-				},
-				))
-
-				Expect(instances[1]).To(Equal(ApplicationInstance{
-					ID:      1,
-					State:   ApplicationInstanceCrashed,
-					Since:   2514251828.984577,
-					Details: "more details",
-				},
+				Expect(instances).To(Equal(
+					map[int]ApplicationInstance{
+						0: {
+							ID:      0,
+							State:   constant.ApplicationInstanceRunning,
+							Since:   1403140717.984577,
+							Details: "some detail",
+						},
+						1: {
+							ID:      1,
+							State:   constant.ApplicationInstanceCrashed,
+							Since:   2514251828.984577,
+							Details: "more details",
+						},
+					},
 				))
 			})
 		})
@@ -82,8 +96,7 @@ var _ = Describe("Application Instance", func() {
 			})
 
 			It("returns the error and warnings", func() {
-				_, warnings, err := client.GetApplicationInstancesByApplication("some-app-guid")
-				Expect(err).To(MatchError(ccerror.ResourceNotFoundError{
+				Expect(executeErr).To(MatchError(ccerror.ResourceNotFoundError{
 					Message: "The app could not be found: some-app-guid",
 				}))
 				Expect(warnings).To(ConsistOf(Warnings{"this is a warning"}))

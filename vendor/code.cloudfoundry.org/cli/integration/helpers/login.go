@@ -47,6 +47,14 @@ func LoginCF() string {
 	return username
 }
 
+func LoginCFWithClientCredentials() string {
+	username, password := SkipIfClientCredentialsNotSet()
+	Eventually(CF("auth", username, password, "--client-credentials")).Should(Exit(0))
+
+	return username
+}
+
+// GetCredentials returns back the username and the password.
 func GetCredentials() (string, string) {
 	username := os.Getenv("CF_USERNAME")
 	if username == "" {
@@ -74,4 +82,10 @@ func TargetOrg(org string) {
 func ClearTarget() {
 	LogoutCF()
 	LoginCF()
+}
+
+func SetupCF(org string, space string) {
+	LoginCF()
+	CreateOrgAndSpace(org, space)
+	TargetOrgAndSpace(org, space)
 }

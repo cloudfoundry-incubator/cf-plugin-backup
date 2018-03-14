@@ -147,14 +147,14 @@ var _ = Describe("plugin API", func() {
 		)
 		BeforeEach(func() {
 			createTargetedOrgAndSpace()
-			domain := defaultSharedDomain()
+			domain := helpers.DefaultSharedDomain()
 			service := helpers.PrefixedRandomName("SERVICE")
 			servicePlan := helpers.PrefixedRandomName("SERVICE-PLAN")
 			serviceInstance1 = helpers.PrefixedRandomName("SI1")
 			serviceInstance2 = helpers.PrefixedRandomName("SI2")
 			broker = helpers.NewServiceBroker(helpers.NewServiceBrokerName(), helpers.NewAssets().ServiceBroker, domain, service, servicePlan)
 			broker.Push()
-			broker.Configure()
+			broker.Configure(true)
 			broker.Create()
 
 			Eventually(helpers.CF("enable-service-access", service)).Should(Exit(0))

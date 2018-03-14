@@ -15,7 +15,7 @@ const (
 	DeleteApplicationRequest                                = "DeleteApplication"
 	DeleteIsolationSegmentRelationshipOrganizationRequest   = "DeleteIsolationSegmentRelationshipOrganization"
 	DeleteIsolationSegmentRequest                           = "DeleteIsolationSegment"
-	DeleteServiceInstanceRelationshipSharedSpacesRequest    = "DeleteServiceInstanceRelationshipSharedSpaces"
+	DeleteServiceInstanceRelationshipsSharedSpaceRequest    = "DeleteServiceInstanceRelationshipSharedSpaces"
 	GetApplicationDropletCurrentRequest                     = "GetApplicationDropletCurrent"
 	GetApplicationEnvironmentVariables                      = "GetApplicationEnvironmentVariables"
 	GetApplicationProcessByTypeRequest                      = "GetApplicationProcessByType"
@@ -42,6 +42,7 @@ const (
 	PatchApplicationUserProvidedEnvironmentVariablesRequest = "PatchApplicationUserProvidedEnvironmentVariablesRequest"
 	PatchOrganizationDefaultIsolationSegmentRequest         = "PatchOrganizationDefaultIsolationSegmentRequest"
 	PatchSpaceRelationshipIsolationSegmentRequest           = "PatchSpaceRelationshipIsolationSegmentRequest"
+	PostApplicationManifest                                 = "PostApplicationManifest"
 	PostApplicationProcessScaleRequest                      = "PostApplicationProcessScale"
 	PostApplicationRequest                                  = "PostApplicationRequest"
 	PostApplicationStartRequest                             = "PostApplicationStart"
@@ -84,6 +85,7 @@ var APIRoutes = []Route{
 	{Path: "/:app_guid", Method: http.MethodDelete, Name: DeleteApplicationRequest, Resource: AppsResource},
 	{Path: "/:app_guid", Method: http.MethodPatch, Name: PatchApplicationRequest, Resource: AppsResource},
 	{Path: "/:app_guid/actions/start", Method: http.MethodPost, Name: PostApplicationStartRequest, Resource: AppsResource},
+	{Path: "/:app_guid/actions/apply_manifest", Method: http.MethodPost, Name: PostApplicationManifest, Resource: AppsResource},
 	{Path: "/:app_guid/actions/stop", Method: http.MethodPost, Name: PostApplicationStopRequest, Resource: AppsResource},
 	{Path: "/:app_guid/droplets/current", Method: http.MethodGet, Name: GetApplicationDropletCurrentRequest, Resource: AppsResource},
 	{Path: "/:app_guid/env", Method: http.MethodGet, Name: GetApplicationEnvironmentVariables, Resource: AppsResource},
@@ -108,7 +110,7 @@ var APIRoutes = []Route{
 	{Path: "/:process_guid", Method: http.MethodPatch, Name: PatchApplicationProcessHealthCheckRequest, Resource: ProcessesResource},
 	{Path: "/:process_guid/stats", Method: http.MethodGet, Name: GetProcessInstancesRequest, Resource: ProcessesResource},
 	{Path: "/:service_instance_guid/relationships/shared_spaces", Method: http.MethodPost, Name: PostServiceInstanceRelationshipsSharedSpacesRequest, Resource: ServiceInstancesResource},
-	{Path: "/:service_instance_guid/relationships/shared_spaces/:space_guid", Method: http.MethodDelete, Name: DeleteServiceInstanceRelationshipSharedSpacesRequest, Resource: ServiceInstancesResource},
+	{Path: "/:service_instance_guid/relationships/shared_spaces/:space_guid", Method: http.MethodDelete, Name: DeleteServiceInstanceRelationshipsSharedSpaceRequest, Resource: ServiceInstancesResource},
 	{Path: "/:space_guid/relationships/isolation_segment", Method: http.MethodGet, Name: GetSpaceRelationshipIsolationSegmentRequest, Resource: SpacesResource},
 	{Path: "/:space_guid/relationships/isolation_segment", Method: http.MethodPatch, Name: PatchSpaceRelationshipIsolationSegmentRequest, Resource: SpacesResource},
 	{Path: "/:task_guid/cancel", Method: http.MethodPut, Name: PutTaskCancelRequest, Resource: TasksResource},

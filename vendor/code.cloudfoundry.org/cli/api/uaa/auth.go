@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"code.cloudfoundry.org/cli/api/uaa/constant"
 	"code.cloudfoundry.org/cli/api/uaa/internal"
 )
 
@@ -17,11 +18,18 @@ type AuthResponse struct {
 
 // Authenticate sends a username and password to UAA then returns an access
 // token and a refresh token.
-func (client Client) Authenticate(username string, password string) (string, string, error) {
-	requestBody := url.Values{}
-	requestBody.Set("username", username)
-	requestBody.Set("password", password)
-	requestBody.Set("grant_type", "password")
+func (client Client) Authenticate(ID string, secret string, grantType constant.GrantType) (string, string, error) {
+	requestBody := url.Values{
+		"grant_type": {string(grantType)},
+	}
+	switch grantType {
+	case constant.GrantTypeClientCredentials:
+		requestBody.Set("client_id", ID)
+		requestBody.Set("client_secret", secret)
+	default:
+		requestBody.Set("username", ID)
+		requestBody.Set("password", secret)
+	}
 
 	request, err := client.newRequest(requestOptions{
 		RequestName: internal.PostOAuthTokenRequest,
@@ -30,10 +38,14 @@ func (client Client) Authenticate(username string, password string) (string, str
 		},
 		Body: strings.NewReader(requestBody.Encode()),
 	})
+
 	if err != nil {
 		return "", "", err
 	}
-	request.SetBasicAuth(client.id, client.secret)
+
+	if grantType == constant.GrantTypePassword {
+		request.SetBasicAuth(client.config.UAAOAuthClient(), client.config.UAAOAuthClientSecret())
+	}
 
 	responseBody := AuthResponse{}
 	response := Response{

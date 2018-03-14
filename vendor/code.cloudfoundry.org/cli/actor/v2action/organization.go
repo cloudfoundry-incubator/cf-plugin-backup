@@ -4,6 +4,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 )
 
 // Organization represents a CLI Organization.
@@ -22,9 +23,9 @@ func (actor Actor) GetOrganization(guid string) (Organization, Warnings, error) 
 
 // GetOrganizationByName returns an Organization based off of the name given.
 func (actor Actor) GetOrganizationByName(orgName string) (Organization, Warnings, error) {
-	orgs, warnings, err := actor.CloudControllerClient.GetOrganizations(ccv2.QQuery{
-		Filter:   ccv2.NameFilter,
-		Operator: ccv2.EqualOperator,
+	orgs, warnings, err := actor.CloudControllerClient.GetOrganizations(ccv2.Filter{
+		Type:     constant.NameFilter,
+		Operator: constant.EqualOperator,
 		Values:   []string{orgName},
 	})
 	if err != nil {
@@ -58,7 +59,7 @@ func (actor Actor) DeleteOrganization(orgName string) (Warnings, error) {
 		return allWarnings, err
 	}
 
-	job, deleteWarnings, err := actor.CloudControllerClient.DeleteOrganization(org.GUID)
+	job, deleteWarnings, err := actor.CloudControllerClient.DeleteOrganizationJob(org.GUID)
 	allWarnings = append(allWarnings, deleteWarnings...)
 	if err != nil {
 		return allWarnings, err

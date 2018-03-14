@@ -4,6 +4,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 )
 
 type Stack ccv2.Stack
@@ -21,9 +22,9 @@ func (actor Actor) GetStack(guid string) (Stack, Warnings, error) {
 
 // GetStackByName returns the provided stack
 func (actor Actor) GetStackByName(stackName string) (Stack, Warnings, error) {
-	stacks, warnings, err := actor.CloudControllerClient.GetStacks(ccv2.QQuery{
-		Filter:   ccv2.NameFilter,
-		Operator: ccv2.EqualOperator,
+	stacks, warnings, err := actor.CloudControllerClient.GetStacks(ccv2.Filter{
+		Type:     constant.NameFilter,
+		Operator: constant.EqualOperator,
 		Values:   []string{stackName},
 	})
 	if err != nil {

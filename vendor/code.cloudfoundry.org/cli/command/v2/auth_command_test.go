@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"code.cloudfoundry.org/cli/api/uaa"
+	"code.cloudfoundry.org/cli/api/uaa/constant"
 	"code.cloudfoundry.org/cli/command/commandfakes"
 	. "code.cloudfoundry.org/cli/command/v2"
 	"code.cloudfoundry.org/cli/command/v2/v2fakes"
@@ -28,14 +29,15 @@ var _ = Describe("auth Command", func() {
 		testUI = ui.NewTestUI(nil, NewBuffer(), NewBuffer())
 		fakeActor = new(v2fakes.FakeAuthActor)
 		fakeConfig = new(commandfakes.FakeConfig)
-		binaryName = "faceman"
-		fakeConfig.BinaryNameReturns(binaryName)
 
 		cmd = AuthCommand{
 			UI:     testUI,
 			Config: fakeConfig,
 			Actor:  fakeActor,
 		}
+
+		binaryName = "faceman"
+		fakeConfig.BinaryNameReturns(binaryName)
 	})
 
 	JustBeforeEach(func() {
@@ -44,34 +46,60 @@ var _ = Describe("auth Command", func() {
 
 	Context("when there are no errors", func() {
 		var (
-			testUsername string
-			testPassword string
+			testID     string
+			testSecret string
 		)
 
 		BeforeEach(func() {
-			testUsername = helpers.NewUsername()
-			testPassword = helpers.NewPassword()
-			cmd.RequiredArgs.Username = testUsername
-			cmd.RequiredArgs.Password = testPassword
+			testID = helpers.NewUsername()
+			testSecret = helpers.NewPassword()
+			cmd.RequiredArgs.Username = testID
+			cmd.RequiredArgs.Password = testSecret
 
 			fakeConfig.TargetReturns("some-api-target")
 
 			fakeActor.AuthenticateReturns(nil)
 		})
 
-		It("outputs API target information and clears the targeted org and space", func() {
-			Expect(err).ToNot(HaveOccurred())
+		Context("when client credentials is set", func() {
+			BeforeEach(func() {
+				cmd.ClientCredentials = true
+			})
+			It("outputs API target information and clears the targeted org and space", func() {
+				Expect(err).ToNot(HaveOccurred())
 
-			Expect(testUI.Out).To(Say("API endpoint: %s", fakeConfig.Target()))
-			Expect(testUI.Out).To(Say("Authenticating\\.\\.\\."))
-			Expect(testUI.Out).To(Say("OK"))
-			Expect(testUI.Out).To(Say("Use '%s target' to view or set your target org and space", binaryName))
+				Expect(testUI.Out).To(Say("API endpoint: %s", fakeConfig.Target()))
+				Expect(testUI.Out).To(Say("Authenticating\\.\\.\\."))
+				Expect(testUI.Out).To(Say("OK"))
+				Expect(testUI.Out).To(Say("Use '%s target' to view or set your target org and space", binaryName))
 
-			Expect(fakeActor.AuthenticateCallCount()).To(Equal(1))
-			config, username, password := fakeActor.AuthenticateArgsForCall(0)
-			Expect(config).To(Equal(fakeConfig))
-			Expect(username).To(Equal(testUsername))
-			Expect(password).To(Equal(testPassword))
+				Expect(fakeActor.AuthenticateCallCount()).To(Equal(1))
+				ID, secret, grantType := fakeActor.AuthenticateArgsForCall(0)
+				Expect(ID).To(Equal(testID))
+				Expect(secret).To(Equal(testSecret))
+				Expect(grantType).To(Equal(constant.GrantTypeClientCredentials))
+			})
+		})
+
+		Context("when client credentials is not set", func() {
+			BeforeEach(func() {
+				cmd.ClientCredentials = false
+			})
+
+			It("outputs API target information and clears the targeted org and space", func() {
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(testUI.Out).To(Say("API endpoint: %s", fakeConfig.Target()))
+				Expect(testUI.Out).To(Say("Authenticating\\.\\.\\."))
+				Expect(testUI.Out).To(Say("OK"))
+				Expect(testUI.Out).To(Say("Use '%s target' to view or set your target org and space", binaryName))
+
+				Expect(fakeActor.AuthenticateCallCount()).To(Equal(1))
+				username, password, grantType := fakeActor.AuthenticateArgsForCall(0)
+				Expect(username).To(Equal(testID))
+				Expect(password).To(Equal(testSecret))
+				Expect(grantType).To(Equal(constant.GrantTypePassword))
+			})
 		})
 	})
 

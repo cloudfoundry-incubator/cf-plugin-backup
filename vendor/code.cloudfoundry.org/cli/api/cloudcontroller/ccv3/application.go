@@ -12,67 +12,75 @@ import (
 
 // Application represents a Cloud Controller V3 Application.
 type Application struct {
-	Name          string                    `json:"name,omitempty"`
-	Relationships Relationships             `json:"relationships,omitempty"`
-	GUID          string                    `json:"guid,omitempty"`
-	State         constant.ApplicationState `json:"state,omitempty"`
-	Lifecycle     AppLifecycle              `json:"lifecycle,omitempty"`
-}
-
-type AppLifecycle struct {
-	Type constant.AppLifecycleType `json:"type,omitempty"`
-	Data AppLifecycleData          `json:"data,omitempty"`
-}
-
-type AppLifecycleData struct {
-	Buildpacks []string `json:"buildpacks,omitempty"`
+	Name                string                    `json:"name,omitempty"`
+	Relationships       Relationships             `json:"relationships,omitempty"`
+	GUID                string                    `json:"guid,omitempty"`
+	State               constant.ApplicationState `json:"state,omitempty"`
+	LifecycleType       constant.AppLifecycleType `json:"-"`
+	LifecycleBuildpacks []string                  `json:"-"`
 }
 
 func (a Application) MarshalJSON() ([]byte, error) {
+	type rawApp Application
 	var ccApp struct {
-		Name          string                 `json:"name,omitempty"`
-		Relationships Relationships          `json:"relationships,omitempty"`
-		Lifecycle     map[string]interface{} `json:"lifecycle,omitempty"`
+		Lifecycle map[string]interface{} `json:"lifecycle,omitempty"`
+
+		rawApp
 	}
 
-	ccApp.Name = a.Name
-	ccApp.Relationships = a.Relationships
+	ccApp.rawApp = (rawApp)(a)
 
-	switch a.Lifecycle.Type {
-	case constant.BuildpackAppLifecycleType:
-		if len(a.Lifecycle.Data.Buildpacks) > 0 {
-			switch a.Lifecycle.Data.Buildpacks[0] {
+	switch a.LifecycleType {
+	case constant.AppLifecycleTypeBuildpack:
+		if len(a.LifecycleBuildpacks) > 0 {
+			ccApp.Lifecycle = map[string]interface{}{}
+			ccApp.Lifecycle["type"] = a.LifecycleType
+			ccApp.Lifecycle["data"] = map[string]interface{}{}
+			switch a.LifecycleBuildpacks[0] {
 			case "default", "null":
-				ccApp.Lifecycle = map[string]interface{}{
-					"type": a.Lifecycle.Type,
-					"data": map[string]interface{}{
-						"buildpacks": nil,
-					},
+				ccApp.Lifecycle["data"] = map[string][]string{
+					"buildpacks": nil,
 				}
 			default:
-				ccApp.Lifecycle = map[string]interface{}{
-					"type": a.Lifecycle.Type,
-					"data": map[string]interface{}{
-						"buildpacks": a.Lifecycle.Data.Buildpacks,
-					},
+				ccApp.Lifecycle["data"] = map[string][]string{
+					"buildpacks": a.LifecycleBuildpacks,
 				}
 			}
 		}
-	case constant.DockerAppLifecycleType:
-		ccApp.Lifecycle = map[string]interface{}{
-			"type": a.Lifecycle.Type,
-			"data": map[string]interface{}{},
-		}
+	case constant.AppLifecycleTypeDocker:
+		ccApp.Lifecycle = map[string]interface{}{}
+		ccApp.Lifecycle["type"] = a.LifecycleType
+		ccApp.Lifecycle["data"] = map[string]interface{}{}
 	}
 
+	ccApp.GUID = ""
 	return json.Marshal(ccApp)
 }
 
-// DropletRelationship represents the relationship between a V3 Droplet and its
-// V3 Application
-type DropletRelationship struct {
-	Relationship Relationship `json:"data"`
-	Links        APILinks     `json:"links"`
+func (a *Application) UnmarshalJSON(data []byte) error {
+	type rawApp Application
+	var ccApp struct {
+		*rawApp
+
+		Lifecycle struct {
+			Type constant.AppLifecycleType
+			Data struct {
+				Buildpacks []string
+			}
+		}
+	}
+
+	ccApp.rawApp = (*rawApp)(a)
+
+	err := json.Unmarshal(data, &ccApp)
+	if err != nil {
+		return err
+	}
+
+	a.LifecycleType = ccApp.Lifecycle.Type
+	a.LifecycleBuildpacks = ccApp.Lifecycle.Data.Buildpacks
+
+	return nil
 }
 
 // GetApplications lists applications with optional filters.
@@ -125,6 +133,27 @@ func (client *Client) CreateApplication(app Application) (Application, Warnings,
 	return responseApp, response.Warnings, err
 }
 
+// CreateApplicationActionsApplyManifestByApplication applies the manifest to
+// the given application.
+func (client *Client) CreateApplicationActionsApplyManifestByApplication(rawManifest []byte, appGUID string) (string, Warnings, error) {
+	request, err := client.newHTTPRequest(requestOptions{
+		RequestName: internal.PostApplicationManifest,
+		URIParams:   map[string]string{"app_guid": appGUID},
+		Body:        bytes.NewReader(rawManifest),
+	})
+
+	if err != nil {
+		return "", nil, err
+	}
+
+	request.Header.Set("Content-Type", "application/x-yaml")
+
+	response := cloudcontroller.Response{}
+	err = client.connection.Make(request, &response)
+
+	return response.ResourceLocationURL, response.Warnings, err
+}
+
 // DeleteApplication deletes the app with the given app GUID.
 func (client *Client) DeleteApplication(appGUID string) (string, Warnings, error) {
 	request, err := client.newHTTPRequest(requestOptions{
@@ -164,32 +193,6 @@ func (client *Client) UpdateApplication(app Application) (Application, Warnings,
 	err = client.connection.Make(request, &response)
 
 	return responseApp, response.Warnings, err
-}
-
-// SetApplicationDroplet sets the specified droplet on the given application.
-func (client *Client) SetApplicationDroplet(appGUID string, dropletGUID string) (Relationship, Warnings, error) {
-	relationship := Relationship{GUID: dropletGUID}
-	bodyBytes, err := json.Marshal(relationship)
-	if err != nil {
-		return Relationship{}, nil, err
-	}
-
-	request, err := client.newHTTPRequest(requestOptions{
-		RequestName: internal.PatchApplicationCurrentDropletRequest,
-		URIParams:   map[string]string{"app_guid": appGUID},
-		Body:        bytes.NewReader(bodyBytes),
-	})
-	if err != nil {
-		return Relationship{}, nil, err
-	}
-
-	var responseRelationship Relationship
-	response := cloudcontroller.Response{
-		Result: &responseRelationship,
-	}
-	err = client.connection.Make(request, &response)
-
-	return responseRelationship, response.Warnings, err
 }
 
 // StopApplication stops the given application.

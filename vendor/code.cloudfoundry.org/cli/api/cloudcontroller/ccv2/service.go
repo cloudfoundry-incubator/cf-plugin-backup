@@ -7,11 +7,26 @@ import (
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/internal"
 )
 
+// Service represents a Cloud Controller Service.
 type Service struct {
-	GUID             string
-	Label            string
-	Description      string
+	// GUID is the unique Service identifier.
+	GUID string
+	// Label is the name of the service.
+	Label string
+	// Description is a short blurb describing the service.
+	Description string
+	// DocumentationURL is a url that points to a documentation page for the
+	// service.
 	DocumentationURL string
+	// Extra is a field with extra data pertaining to the service.
+	Extra ServiceExtra
+}
+
+// ServiceExtra contains extra service related properties.
+type ServiceExtra struct {
+	// Shareable is true if the service is shareable across organizations and
+	// spaces.
+	Shareable bool
 }
 
 // UnmarshalJSON helps unmarshal a Cloud Controller Service response.
@@ -22,8 +37,10 @@ func (service *Service) UnmarshalJSON(data []byte) error {
 			Label            string `json:"label"`
 			Description      string `json:"description"`
 			DocumentationURL string `json:"documentation_url"`
+			Extra            string `json:"extra"`
 		}
 	}
+
 	err := json.Unmarshal(data, &ccService)
 	if err != nil {
 		return err
@@ -33,6 +50,18 @@ func (service *Service) UnmarshalJSON(data []byte) error {
 	service.Label = ccService.Entity.Label
 	service.Description = ccService.Entity.Description
 	service.DocumentationURL = ccService.Entity.DocumentationURL
+
+	// We explicitly unmarshal the Extra field to type string because CC returns
+	// a stringified JSON object ONLY for the 'extra' key (see test stub JSON
+	// response). This unmarshal strips escaped quotes, at which time we can then
+	// unmarshal into the ServiceExtra object.
+	extra := ServiceExtra{}
+	err = json.Unmarshal([]byte(ccService.Entity.Extra), &extra)
+	if err != nil {
+		return err
+	}
+
+	service.Extra.Shareable = extra.Shareable
 	return nil
 }
 

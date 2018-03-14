@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/actionerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	"code.cloudfoundry.org/cli/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -227,7 +228,7 @@ func (actor Actor) DeleteRoute(routeGUID string) (Warnings, error) {
 }
 
 func (actor Actor) CheckRoute(route Route) (bool, Warnings, error) {
-	exists, warnings, err := actor.CloudControllerClient.CheckRoute(ActorToCCRoute(route))
+	exists, warnings, err := actor.CloudControllerClient.DoesRouteExist(ActorToCCRoute(route))
 	return exists, Warnings(warnings), err
 }
 
@@ -289,26 +290,26 @@ func (actor Actor) GetRouteByComponents(route Route) (Route, Warnings, error) {
 		return Route{}, nil, actionerror.NoHostnameAndSharedDomainError{}
 	}
 
-	queries := []ccv2.QQuery{
+	queries := []ccv2.Filter{
 		{
-			Filter:   ccv2.DomainGUIDFilter,
-			Operator: ccv2.EqualOperator,
+			Type:     constant.DomainGUIDFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{route.Domain.GUID},
 		}, {
-			Filter:   ccv2.HostFilter,
-			Operator: ccv2.EqualOperator,
+			Type:     constant.HostFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{route.Host},
 		}, {
-			Filter:   ccv2.PathFilter,
-			Operator: ccv2.EqualOperator,
+			Type:     constant.PathFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{route.Path},
 		},
 	}
 
 	if route.Port.IsSet {
-		queries = append(queries, ccv2.QQuery{
-			Filter:   ccv2.PortFilter,
-			Operator: ccv2.EqualOperator,
+		queries = append(queries, ccv2.Filter{
+			Type:     constant.PortFilter,
+			Operator: constant.EqualOperator,
 			Values:   []string{fmt.Sprint(route.Port.Value)},
 		})
 	}

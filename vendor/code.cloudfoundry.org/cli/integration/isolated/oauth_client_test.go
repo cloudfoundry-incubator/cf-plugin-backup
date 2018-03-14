@@ -37,7 +37,8 @@ var _ = Describe("custom oauth client id", func() {
 
 	Context("when the config file exists", func() {
 		BeforeEach(func() {
-			setupCF(ReadOnlyOrg, ReadOnlySpace)
+			helpers.LoginCF()
+			helpers.TargetOrgAndSpace(ReadOnlyOrg, ReadOnlySpace)
 		})
 
 		Context("when the client id and secret keys are set in the config", func() {
@@ -71,7 +72,7 @@ var _ = Describe("custom oauth client id", func() {
 					username, password := helpers.GetCredentials()
 					session := helpers.CF("login", "-u", username, "-p", password)
 					Eventually(session).Should(Exit(1))
-					Expect(session.Out).To(Say(
+					Expect(session).To(Say(
 						"Credentials were rejected, please try again."))
 				})
 			})

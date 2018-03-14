@@ -13,10 +13,9 @@ var Commands commandList
 type commandList struct {
 	VerboseOrVersion bool `short:"v" long:"version" description:"verbose and version flag"`
 
-	V2Push v2.V2PushCommand `command:"v2-push" description:"Push a new app or sync changes to an existing app"`
-
 	V3App                v3.V3AppCommand                `command:"v3-app" description:"Display health and status for an app"`
 	V3Apps               v3.V3AppsCommand               `command:"v3-apps" description:"List all apps in the target space"`
+	V3ApplyManifest      v3.V3ApplyManifestCommand      `command:"v3-apply-manifest" description:"Applies manifest properties to an application"`
 	V3CreateApp          v3.V3CreateAppCommand          `command:"v3-create-app" description:"Create a V3 App"`
 	V3CreatePackage      v3.V3CreatePackageCommand      `command:"v3-create-package" description:"Uploads a V3 Package"`
 	V3DeleteApp          v3.V3DeleteCommand             `command:"v3-delete" description:"Delete a V3 App"`
@@ -35,8 +34,6 @@ type commandList struct {
 	V3Start              v3.V3StartCommand              `command:"v3-start" description:"Start an app"`
 	V3Stop               v3.V3StopCommand               `command:"v3-stop" description:"Stop an app"`
 	V3UnsetEnv           v3.V3UnsetEnvCommand           `command:"v3-unset-env" description:"Remove an env variable from an app"`
-	V3ShareService       v3.V3ShareServiceCommand       `command:"v3-share-service" description:"Share a service instance with another space"`
-	V3UnshareService     v3.V3UnshareServiceCommand     `command:"v3-unshare-service" description:"Unshare a shared service instance from a space"`
 	V3SSH                v3.V3SSHCommand                `command:"v3-ssh" description:"SSH to an application container instance"`
 
 	AddPluginRepo                      plugin.AddPluginRepoCommand                  `command:"add-plugin-repo" description:"Add a new plugin repository"`
@@ -45,7 +42,7 @@ type commandList struct {
 	Api                                v2.ApiCommand                                `command:"api" description:"Set or view target api url"`
 	Apps                               v2.AppsCommand                               `command:"apps" alias:"a" description:"List all apps in the target space"`
 	App                                v2.AppCommand                                `command:"app" description:"Display health and status for an app"`
-	Auth                               v2.AuthCommand                               `command:"auth" description:"Authenticate user non-interactively"`
+	Auth                               v2.AuthCommand                               `command:"auth" description:"Authenticate non-interactively"`
 	BindRouteService                   v2.BindRouteServiceCommand                   `command:"bind-route-service" alias:"brs" description:"Bind a service instance to an HTTP route"`
 	BindRunningSecurityGroup           v2.BindRunningSecurityGroupCommand           `command:"bind-running-security-group" description:"Bind a security group to the list of security groups to be used for running applications"`
 	BindSecurityGroup                  v2.BindSecurityGroupCommand                  `command:"bind-security-group" description:"Bind a security group to a particular space, or all existing spaces of an org"`
@@ -168,6 +165,7 @@ type commandList struct {
 	SetSpaceRole                       v2.SetSpaceRoleCommand                       `command:"set-space-role" description:"Assign a space role to a user"`
 	SetStagingEnvironmentVariableGroup v2.SetStagingEnvironmentVariableGroupCommand `command:"set-staging-environment-variable-group" alias:"ssevg" description:"Pass parameters as JSON to create a staging environment variable group"`
 	SharePrivateDomain                 v2.SharePrivateDomainCommand                 `command:"share-private-domain" description:"Share a private domain with an org"`
+	ShareService                       v3.ShareServiceCommand                       `command:"share-service" description:"Share a service instance with another space"`
 	SpaceQuotas                        v2.SpaceQuotasCommand                        `command:"space-quotas" description:"List available space resource quotas"`
 	SpaceQuota                         v2.SpaceQuotaCommand                         `command:"space-quota" description:"Show space quota info"`
 	SpaceSSHAllowed                    v2.SpaceSSHAllowedCommand                    `command:"space-ssh-allowed" description:"Reports whether SSH is allowed in a space"`
@@ -198,6 +196,7 @@ type commandList struct {
 	UnsetSpaceQuota                    v2.UnsetSpaceQuotaCommand                    `command:"unset-space-quota" description:"Unassign a quota from a space"`
 	UnsetSpaceRole                     v2.UnsetSpaceRoleCommand                     `command:"unset-space-role" description:"Remove a space role from a user"`
 	UnsharePrivateDomain               v2.UnsharePrivateDomainCommand               `command:"unshare-private-domain" description:"Unshare a private domain with an org"`
+	UnshareService                     v3.UnshareServiceCommand                     `command:"unshare-service" description:"Unshare a shared service instance from a space"`
 	UpdateBuildpack                    v2.UpdateBuildpackCommand                    `command:"update-buildpack" description:"Update a buildpack"`
 	UpdateQuota                        v2.UpdateQuotaCommand                        `command:"update-quota" description:"Update an existing resource quota"`
 	UpdateSecurityGroup                v2.UpdateSecurityGroupCommand                `command:"update-security-group" description:"Update a security group"`

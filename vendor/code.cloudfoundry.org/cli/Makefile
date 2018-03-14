@@ -87,6 +87,15 @@ out/cf : $(GOSRC)
 							-X code.cloudfoundry.org/cli/version.binaryBuildDate=$(CF_BUILD_DATE)" \
 		.
 
+out/cf-osx : $(GOSRC)
+	GOARCH=amd64 GOOS=darwin go build -o out/cf-osx \
+	  -ldflags "-w \
+						  -s \
+						  -X code.cloudfoundry.org/cli/version.binaryVersion=$(CF_BUILD_VERSION) \
+						  -X code.cloudfoundry.org/cli/version.binarySHA=$(CF_BUILD_SHA) \
+						  -X code.cloudfoundry.org/cli/version.binaryBuildDate=$(CF_BUILD_DATE)" \
+		.
+
 out/cf-cli-_winx64.exe : $(GOSRC)
 	go get github.com/akavel/rsrc
 	rsrc -ico ci/installers/windows/cf.ico
@@ -109,7 +118,8 @@ units : format vet build
 units-full : format vet build
 	@rm -f $(wildcard fixtures/plugins/*.exe)
 	@ginkgo version
-	CF_HOME=$(PWD)/fixtures ginkgo -r -nodes $(NODES) -randomizeAllSpecs -randomizeSuites -skipPackage integration
+	CF_HOME=$(PWD)/fixtures ginkgo -r -nodes $(NODES) -randomizeAllSpecs -randomizeSuites -skipPackage integration,cf/ssh
+	CF_HOME=$(PWD)/fixtures ginkgo -r -nodes $(NODES) -randomizeAllSpecs -randomizeSuites -flakeAttempts 3 cf/ssh
 	@echo "\nSWEET SUITE SUCCESS"
 
 version :
@@ -119,6 +129,6 @@ vet :
 	@echo  "Vetting packages for potential issues..."
 	go tool vet -all -shadow=true ./api ./actor ./command ./integration ./types ./util ./version
 
-.PHONY : all build clean i18n i18n-extract-strings format version vet
+.PHONY : all buildg clean i18n i18n-extract-strings format version vet
 .PHONY : test units units-full integration integration-tests-full integration-cleanup integration-experimental integration-plugin integration-isolated integration-push
 .PHONY : check-target-env fly-windows-experimental fly-windows-isolated fly-windows-plugin fly-windows-push

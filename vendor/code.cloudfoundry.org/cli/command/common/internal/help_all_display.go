@@ -165,4 +165,10 @@ var ExperimentalHelpCategoryList = []HelpCategory{
 			{"v3-packages", "v3-create-package"},
 		},
 	},
+	{
+		CategoryName: "SERVICES (experimental):",
+		CommandList: [][]string{
+			{"share-service", "unshare-service"},
+		},
+	},
 }

@@ -18,8 +18,8 @@ var _ = Describe("check-route command", func() {
 		orgName = helpers.NewOrgName()
 		spaceName = helpers.NewSpaceName()
 
-		setupCF(orgName, spaceName)
-		route = helpers.NewRoute(spaceName, defaultSharedDomain(), "integration", "")
+		helpers.SetupCF(orgName, spaceName)
+		route = helpers.NewRoute(spaceName, helpers.DefaultSharedDomain(), "integration", "")
 	})
 
 	AfterEach(func() {

@@ -8,6 +8,7 @@ import (
 	"code.cloudfoundry.org/cli/actor/v2action/v2actionfakes"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -106,10 +107,10 @@ var _ = Describe("Stack Actions", func() {
 					}))
 
 					Expect(fakeCloudControllerClient.GetStacksCallCount()).To(Equal(1))
-					Expect(fakeCloudControllerClient.GetStacksArgsForCall(0)).To(Equal([]ccv2.QQuery{
+					Expect(fakeCloudControllerClient.GetStacksArgsForCall(0)).To(Equal([]ccv2.Filter{
 						{
-							Filter:   ccv2.NameFilter,
-							Operator: ccv2.EqualOperator,
+							Type:     constant.NameFilter,
+							Operator: constant.EqualOperator,
 							Values:   []string{"some-stack"},
 						},
 					}))

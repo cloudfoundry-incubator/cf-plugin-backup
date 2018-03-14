@@ -1,15 +1,7 @@
-[[constraint]]
-  name = "github.com/blang/semver"
-  version = "v3.3.0"
-
-[[override]]
-  name = "github.com/cloudfoundry/cli"
-  version = "v6.35.0"
-
 [[override]]
   name = "code.cloudfoundry.org/cli"
   source = "github.com/cloudfoundry/cli"
-  version = "v6.34.1"
+  version = "v6.35.0"
 
 [[constraint]]
   name = "github.com/deckarep/golang-set"

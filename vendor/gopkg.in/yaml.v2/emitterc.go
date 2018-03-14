@@ -2,7 +2,6 @@ package yaml
 
 import (
 	"bytes"
-	"fmt"
 )
 
 // Flush the buffer if needed.
@@ -665,7 +664,7 @@ func yaml_emitter_emit_node(emitter *yaml_emitter_t, event *yaml_event_t,
 		return yaml_emitter_emit_mapping_start(emitter, event)
 	default:
 		return yaml_emitter_set_emitter_error(emitter,
-			fmt.Sprintf("expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS, but got %v", event.typ))
+			"expected SCALAR, SEQUENCE-START, MAPPING-START, or ALIAS")
 	}
 }
 

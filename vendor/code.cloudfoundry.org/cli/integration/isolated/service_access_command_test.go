@@ -20,18 +20,18 @@ var _ = Describe("service-access command", func() {
 		BeforeEach(func() {
 			orgName = helpers.NewOrgName()
 			spaceName = helpers.NewSpaceName()
-			setupCF(orgName, spaceName)
+			helpers.SetupCF(orgName, spaceName)
 
 			serviceBroker = helpers.NewServiceBroker(
 				helpers.NewServiceBrokerName(),
 				helpers.NewAssets().ServiceBroker,
-				defaultSharedDomain(),
+				helpers.DefaultSharedDomain(),
 				helpers.PrefixedRandomName("service"),
 				helpers.PrefixedRandomName("plan"),
 			)
 
 			serviceBroker.Push()
-			serviceBroker.Configure()
+			serviceBroker.Configure(true)
 			serviceBroker.Create()
 		})
 

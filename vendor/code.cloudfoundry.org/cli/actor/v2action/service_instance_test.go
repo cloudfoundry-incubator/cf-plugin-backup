@@ -8,8 +8,10 @@ import (
 	"code.cloudfoundry.org/cli/actor/v2action/v2actionfakes"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccerror"
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2"
+	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/constant"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
@@ -22,6 +24,26 @@ var _ = Describe("Service Instance Actions", func() {
 	BeforeEach(func() {
 		fakeCloudControllerClient = new(v2actionfakes.FakeCloudControllerClient)
 		actor = NewActor(fakeCloudControllerClient, nil, nil)
+	})
+
+	Describe("ServiceInstance", func() {
+		DescribeTable("IsManaged",
+			func(iType constant.ServiceInstanceType, expected bool) {
+				Expect(ServiceInstance{Type: iType}.IsManaged()).To(Equal(expected))
+			},
+
+			Entry("return true for managed service", constant.ServiceInstanceTypeManagedService, true),
+			Entry("return false for any other type of service", constant.ServiceInstanceTypeUserProvidedService, false),
+		)
+
+		DescribeTable("IsUserProvided",
+			func(iType constant.ServiceInstanceType, expected bool) {
+				Expect(ServiceInstance{Type: iType}.IsUserProvided()).To(Equal(expected))
+			},
+
+			Entry("return true for UserProvidedService service", constant.ServiceInstanceTypeUserProvidedService, true),
+			Entry("return false for any other type of service", constant.ServiceInstanceTypeManagedService, false),
+		)
 	})
 
 	Describe("GetServiceInstance", func() {
@@ -114,10 +136,10 @@ var _ = Describe("Service Instance Actions", func() {
 				spaceGUID, includeUserProvidedServices, queries := fakeCloudControllerClient.GetSpaceServiceInstancesArgsForCall(0)
 				Expect(spaceGUID).To(Equal("some-space-guid"))
 				Expect(includeUserProvidedServices).To(BeTrue())
-				Expect(queries).To(ConsistOf([]ccv2.QQuery{
-					ccv2.QQuery{
-						Filter:   ccv2.NameFilter,
-						Operator: ccv2.EqualOperator,
+				Expect(queries).To(ConsistOf([]ccv2.Filter{
+					ccv2.Filter{
+						Type:     constant.NameFilter,
+						Operator: constant.EqualOperator,
 						Values:   []string{"some-service-instance"},
 					},
 				}))
@@ -303,270 +325,6 @@ var _ = Describe("Service Instance Actions", func() {
 				_, warnings, err := actor.GetServiceInstancesBySpace("some-space-guid")
 				Expect(err).To(MatchError(expectedError))
 				Expect(warnings).To(ConsistOf("warning-1", "warning-2"))
-			})
-		})
-	})
-
-	Describe("GetSharedToSpaceGUID", func() {
-		var (
-			spaceGUID  string
-			warnings   Warnings
-			executeErr error
-
-			serviceInstanceName string
-			sourceSpaceGUID     string
-			sharedToOrgName     string
-			sharedToSpaceName   string
-		)
-
-		BeforeEach(func() {
-			sourceSpaceGUID = "some-source-space-guid"
-			serviceInstanceName = "some-service-instance"
-		})
-
-		JustBeforeEach(func() {
-			spaceGUID, warnings, executeErr = actor.GetSharedToSpaceGUID(serviceInstanceName, sourceSpaceGUID, sharedToOrgName, sharedToSpaceName)
-		})
-
-		Context("when the service instance exists", func() {
-			BeforeEach(func() {
-				fakeCloudControllerClient.GetSpaceServiceInstancesReturns(
-					[]ccv2.ServiceInstance{
-						{
-							GUID: "some-service-instance-guid",
-							Name: "some-service-instance",
-						},
-					},
-					ccv2.Warnings{"get-space-service-instances-warning"},
-					nil,
-				)
-			})
-
-			It("calls GetSpaceServiceInstance with the correct service instance name and space guid", func() {
-				Expect(fakeCloudControllerClient.GetSpaceServiceInstancesCallCount()).To(Equal(1))
-				spaceGUIDArg, _, queryArg := fakeCloudControllerClient.GetSpaceServiceInstancesArgsForCall(0)
-
-				Expect(spaceGUIDArg).To(Equal("some-source-space-guid"))
-				Expect(queryArg[0].Values[0]).To(Equal("some-service-instance"))
-			})
-
-			It("calls GetServiceInstanceSharedTos with the correct service instance guid", func() {
-				Expect(fakeCloudControllerClient.GetSpaceServiceInstancesCallCount()).To(Equal(1))
-				serviceInstanceGUIDArg := fakeCloudControllerClient.GetServiceInstanceSharedTosArgsForCall(0)
-
-				Expect(serviceInstanceGUIDArg).To(Equal("some-service-instance-guid"))
-			})
-
-			Context("when the service instance is shared with one other space", func() {
-				BeforeEach(func() {
-					fakeCloudControllerClient.GetServiceInstanceSharedTosReturns(
-						[]ccv2.ServiceInstanceSharedTo{
-							{
-								SpaceGUID:        "shared-to-space-guid",
-								SpaceName:        "shared-to-space-name",
-								OrganizationName: "shared-to-org-name",
-							},
-						},
-						ccv2.Warnings{"get-service-instance-shared-tos-warning"},
-						nil,
-					)
-				})
-
-				Context("and is shared with the specified org", func() {
-					BeforeEach(func() {
-						sharedToOrgName = "shared-to-org-name"
-					})
-
-					Context("and is shared with the specified space", func() {
-						BeforeEach(func() {
-							sharedToSpaceName = "shared-to-space-name"
-						})
-
-						It("returns the space guid and all warnings", func() {
-							Expect(executeErr).ToNot(HaveOccurred())
-							Expect(spaceGUID).To(Equal("shared-to-space-guid"))
-							Expect(warnings).To(Equal(Warnings{
-								"get-space-service-instances-warning",
-								"get-service-instance-shared-tos-warning"}))
-						})
-					})
-
-					Context("and is shared with a space with the same name but different capitalization as the specified space", func() {
-						BeforeEach(func() {
-							sharedToSpaceName = "ShArEd-To-SpAcE-nAmE"
-						})
-
-						It("returns the space guid and all warnings", func() {
-							Expect(executeErr).ToNot(HaveOccurred())
-							Expect(spaceGUID).To(Equal("shared-to-space-guid"))
-							Expect(warnings).To(Equal(Warnings{
-								"get-space-service-instances-warning",
-								"get-service-instance-shared-tos-warning"}))
-						})
-					})
-				})
-
-				Context("and is shared with an org with the same name but different capitalization as the specified org", func() {
-					BeforeEach(func() {
-						sharedToOrgName = "Shared-To-Org-Name"
-					})
-
-					Context("and is shared with the specified space", func() {
-						BeforeEach(func() {
-							sharedToSpaceName = "shared-to-space-name"
-						})
-
-						It("returns the space guid and all warnings", func() {
-							Expect(executeErr).ToNot(HaveOccurred())
-							Expect(spaceGUID).To(Equal("shared-to-space-guid"))
-							Expect(warnings).To(Equal(Warnings{
-								"get-space-service-instances-warning",
-								"get-service-instance-shared-tos-warning"}))
-						})
-					})
-				})
-			})
-
-			Context("when the service instance is shared with multiple other spaces", func() {
-				BeforeEach(func() {
-					fakeCloudControllerClient.GetServiceInstanceSharedTosReturns(
-						[]ccv2.ServiceInstanceSharedTo{
-							{
-								SpaceGUID:        "shared-to-space-guid-first",
-								SpaceName:        "shared-to-space-name-first",
-								OrganizationName: "shared-to-org-name-first",
-							},
-							{
-								SpaceGUID:        "shared-to-space-guid",
-								SpaceName:        "shared-to-space-name",
-								OrganizationName: "shared-to-org-name",
-							},
-							{
-								SpaceGUID:        "shared-to-space-guid-last",
-								SpaceName:        "shared-to-space-name-last",
-								OrganizationName: "shared-to-org-name-last",
-							},
-						},
-						ccv2.Warnings{"get-service-instance-shared-tos-warning"},
-						nil,
-					)
-				})
-
-				Context("and is shared with the specified org", func() {
-					BeforeEach(func() {
-						sharedToOrgName = "shared-to-org-name"
-					})
-
-					Context("and is shared with the specified space", func() {
-						BeforeEach(func() {
-							sharedToSpaceName = "shared-to-space-name"
-						})
-
-						It("returns the space guid and all warnings", func() {
-							Expect(executeErr).ToNot(HaveOccurred())
-							Expect(spaceGUID).To(Equal("shared-to-space-guid"))
-							Expect(warnings).To(Equal(Warnings{
-								"get-space-service-instances-warning",
-								"get-service-instance-shared-tos-warning"}))
-						})
-					})
-
-					Context("and is not shared with the specified space", func() {
-						BeforeEach(func() {
-							sharedToSpaceName = "some-other-space-name"
-						})
-
-						It("returns an error and all warnings", func() {
-							Expect(executeErr).To(MatchError(actionerror.ServiceInstanceNotSharedToSpaceError{ServiceInstanceName: serviceInstanceName}))
-							Expect(warnings).To(Equal(Warnings{
-								"get-space-service-instances-warning",
-								"get-service-instance-shared-tos-warning"}))
-						})
-					})
-				})
-
-				Context("and is not shared with the specified org", func() {
-					BeforeEach(func() {
-						sharedToOrgName = "some-other-org-name"
-					})
-
-					Context("and is shared with a space with the same name as the specified space", func() {
-						BeforeEach(func() {
-							sharedToSpaceName = "shared-to-space-name"
-						})
-
-						It("returns an error and all warnings", func() {
-							Expect(executeErr).To(MatchError(actionerror.ServiceInstanceNotSharedToSpaceError{ServiceInstanceName: serviceInstanceName}))
-							Expect(warnings).To(Equal(Warnings{
-								"get-space-service-instances-warning",
-								"get-service-instance-shared-tos-warning"}))
-						})
-					})
-				})
-			})
-
-			Context("when the service instance is not shared", func() {
-				BeforeEach(func() {
-					fakeCloudControllerClient.GetServiceInstanceSharedTosReturns(
-						[]ccv2.ServiceInstanceSharedTo{},
-						ccv2.Warnings{"get-service-instance-shared-tos-warning"},
-						nil,
-					)
-				})
-
-				It("returns an error and all warnings", func() {
-					Expect(executeErr).To(MatchError(actionerror.ServiceInstanceNotSharedToSpaceError{ServiceInstanceName: serviceInstanceName}))
-					Expect(warnings).To(Equal(Warnings{
-						"get-space-service-instances-warning",
-						"get-service-instance-shared-tos-warning"}))
-				})
-			})
-
-			Context("when getting the shared-to information fails", func() {
-				BeforeEach(func() {
-					fakeCloudControllerClient.GetServiceInstanceSharedTosReturns(
-						[]ccv2.ServiceInstanceSharedTo{},
-						ccv2.Warnings{"get-service-instance-shared-tos-warning"},
-						errors.New("some-shared-to-api-failure"),
-					)
-				})
-
-				It("returns an error and warnings", func() {
-					Expect(executeErr).To(MatchError("some-shared-to-api-failure"))
-					Expect(warnings).To(Equal(Warnings{
-						"get-space-service-instances-warning",
-						"get-service-instance-shared-tos-warning"}))
-				})
-			})
-		})
-
-		Context("when the service instance does not exist", func() {
-			BeforeEach(func() {
-				fakeCloudControllerClient.GetSpaceServiceInstancesReturns(
-					[]ccv2.ServiceInstance{},
-					ccv2.Warnings{"get-space-service-instances-warning"},
-					nil,
-				)
-			})
-
-			It("returns an error and warnings", func() {
-				Expect(executeErr).To(MatchError(actionerror.ServiceInstanceNotFoundError{Name: serviceInstanceName, GUID: ""}))
-				Expect(warnings).To(Equal(Warnings{"get-space-service-instances-warning"}))
-			})
-		})
-
-		Context("when retrieving the service instance returns an error ", func() {
-			BeforeEach(func() {
-				fakeCloudControllerClient.GetSpaceServiceInstancesReturns(
-					[]ccv2.ServiceInstance{},
-					ccv2.Warnings{"get-space-service-instances-warning"},
-					errors.New("oops"),
-				)
-			})
-
-			It("returns an error and warnings", func() {
-				Expect(executeErr).To(MatchError(errors.New("oops")))
-				Expect(warnings).To(Equal(Warnings{"get-space-service-instances-warning"}))
 			})
 		})
 	})

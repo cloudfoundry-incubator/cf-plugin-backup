@@ -51,7 +51,7 @@ var _ = XDescribe("apps command", func() {
 		var userName string
 
 		BeforeEach(func() {
-			setupCF(orgName, spaceName)
+			helpers.SetupCF(orgName, spaceName)
 			userName, _ = helpers.GetCredentials()
 		})
 
@@ -73,11 +73,11 @@ var _ = XDescribe("apps command", func() {
 
 			BeforeEach(func() {
 				helpers.WithHelloWorldApp(func(appDir string) {
-					Eventually(helpers.CustomCF(helpers.CFEnv{WorkingDirectory: appDir}, "v2-push", appName1)).Should(Exit(0))
-					Eventually(helpers.CustomCF(helpers.CFEnv{WorkingDirectory: appDir}, "v2-push", appName2)).Should(Exit(0))
+					Eventually(helpers.CustomCF(helpers.CFEnv{WorkingDirectory: appDir}, "push", appName1)).Should(Exit(0))
+					Eventually(helpers.CustomCF(helpers.CFEnv{WorkingDirectory: appDir}, "push", appName2)).Should(Exit(0))
 				})
 
-				domainName = defaultSharedDomain()
+				domainName = helpers.DefaultSharedDomain()
 			})
 
 			It("displays apps in the list", func() {

@@ -10,13 +10,24 @@ import (
 	"code.cloudfoundry.org/cli/api/cloudcontroller/ccv2/internal"
 )
 
+// Resource represents a Cloud Controller Resource.
 type Resource struct {
-	Filename string      `json:"fn"`
-	Mode     os.FileMode `json:"mode"`
-	SHA1     string      `json:"sha1"`
-	Size     int64       `json:"size"`
+
+	// Filename is the name of the resource.
+	Filename string `json:"fn"`
+
+	// Mode is the operating system file mode (aka file permissions) of the
+	// resource.
+	Mode os.FileMode `json:"mode"`
+
+	// SHA1 represents the SHA-1 hash of the resource.
+	SHA1 string `json:"sha1"`
+
+	// Size represents the file size of the resource.
+	Size int64 `json:"size"`
 }
 
+// UnmarshalJSON helps unmarshal a Cloud Controller Resource response.
 func (r *Resource) UnmarshalJSON(rawJSON []byte) error {
 	var ccResource struct {
 		Filename string `json:"fn,omitempty"`
@@ -42,6 +53,7 @@ func (r *Resource) UnmarshalJSON(rawJSON []byte) error {
 	return nil
 }
 
+// MarshalJSON converts a resource into a Cloud Controller Resource.
 func (r Resource) MarshalJSON() ([]byte, error) {
 	var ccResource struct {
 		Filename string `json:"fn,omitempty"`
@@ -57,16 +69,16 @@ func (r Resource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ccResource)
 }
 
-// ResourceMatch returns the resources that exist on the cloud foundry instance
+// UpdateResourceMatch returns the resources that exist on the cloud foundry instance
 // from the set of resources given.
-func (client *Client) ResourceMatch(resourcesToMatch []Resource) ([]Resource, Warnings, error) {
+func (client *Client) UpdateResourceMatch(resourcesToMatch []Resource) ([]Resource, Warnings, error) {
 	body, err := json.Marshal(resourcesToMatch)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	request, err := client.newHTTPRequest(requestOptions{
-		RequestName: internal.PutResourceMatch,
+		RequestName: internal.PutResourceMatchRequest,
 		Body:        bytes.NewReader(body),
 	})
 	if err != nil {
