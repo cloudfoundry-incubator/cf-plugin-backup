@@ -1,6 +1,6 @@
 #!/bin/sh
 
-OSES="linux darwin"
+OSARCHES="${OSARCHES:-linux-amd64 linux-386 darwin-amd64 windows-amd64 windows-386}"
 
 set -o errexit
 
@@ -9,12 +9,14 @@ set -o errexit
 
 printf "%b==> Building %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
 
-for OS in ${OSES}; do
-  if test "${OS}" = windows ; then SUFFIX=".exe" ; else SUFFIX="" ; fi
-  env GOOS="${OS}" GOARCH=amd64 go build -o "build/${OS}-amd64/cf-plugin-backup${SUFFIX}" \
+for OSARCH in ${OSARCHES}; do
+  export GOOS="${OSARCH%-*}"
+  export GOARCH="${OSARCH##*-}"
+  if test "${GOOS}" = windows ; then SUFFIX=".exe" ; else SUFFIX="" ; fi
+  go build -o "build/${OSARCH}/cf-plugin-backup${SUFFIX}" \
     -ldflags="-X main.version=${ARTIFACT_VERSION}" \
     ./
-  cp README.txt LICENSE.* "build/${OS}-amd64/"
+  cp README.txt LICENSE.* "build/${OSARCH}/"
 done
 
 printf "%b" "${NO_COLOR}"

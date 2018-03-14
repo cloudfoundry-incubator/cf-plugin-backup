@@ -1,7 +1,5 @@
 #!/bin/sh
 
-OSES="linux darwin"
-
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 
 set -o errexit
