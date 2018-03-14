@@ -3,19 +3,6 @@
   source = "github.com/cloudfoundry/cli"
   version = "v6.35.0"
 
-[[constraint]]
-  name = "github.com/deckarep/golang-set"
-  version = "v1.5"
-
-[[constraint]]
-  name = "github.com/spf13/cobra"
-  revision = "f368244301305f414206f889b1735a54cfc8bde8"
-
-[[constraint]]
-  name = "github.com/spf13/viper"
-  revision = "d8a428b8a30606e1d0b355d91edf282609ade1a6"
-
 [[override]]
   name = "github.com/cheggaaa/pb"
   version = "^v1.0.5"
-

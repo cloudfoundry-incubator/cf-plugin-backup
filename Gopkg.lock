@@ -42,12 +42,6 @@
   version = "v6.35.0"
 
 [[projects]]
-  name = "github.com/BurntSushi/toml"
-  packages = ["."]
-  revision = "b26d9c308763d68093482582cea63d69be07a0f0"
-  version = "v0.3.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/SUSE/termui"
   packages = [
@@ -158,10 +152,25 @@
   revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
 
 [[projects]]
+  name = "github.com/pelletier/go-toml"
+  packages = ["."]
+  revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
   version = "v1.0.5"
+
+[[projects]]
+  name = "github.com/spf13/afero"
+  packages = [
+    ".",
+    "mem"
+  ]
+  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
+  version = "v1.0.2"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -172,7 +181,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "f368244301305f414206f889b1735a54cfc8bde8"
+  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
+  version = "v0.0.1"
 
 [[projects]]
   branch = "master"
@@ -189,7 +199,8 @@
 [[projects]]
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "d8a428b8a30606e1d0b355d91edf282609ade1a6"
+  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -223,8 +234,12 @@
     "internal/language",
     "internal/language/compact",
     "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
     "language",
-    "unicode/cldr"
+    "transform",
+    "unicode/cldr",
+    "unicode/norm"
   ]
   revision = "4a13a3860a6e13b9c8d09ceeb19f19a4b68c1a4e"
 
@@ -238,6 +253,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "86507c46830fe5a2295977719b4b536905fd75cb4c6a3f9a4b8249146c96823a"
+  inputs-digest = "cef249ddb9d87280e4fb4c7660278352741835d997f616044fb24320c1a58eb8"
   solver-name = "gps-cdcl"
   solver-version = 1
