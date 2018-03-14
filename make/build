@@ -14,7 +14,7 @@ for OS in ${OSES}; do
   env GOOS="${OS}" GOARCH=amd64 go build -o "build/${OS}-amd64/cf-plugin-backup${SUFFIX}" \
     -ldflags="-X main.version=${ARTIFACT_VERSION}" \
     ./
-  cp README.txt LICENSE.txt "build/${OS}-amd64/"
+  cp README.txt LICENSE.* "build/${OS}-amd64/"
 done
 
 printf "%b" "${NO_COLOR}"
