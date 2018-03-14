@@ -26,9 +26,11 @@
     "cf/formatters",
     "cf/i18n",
     "cf/models",
+    "cf/terminal",
     "cf/trace",
     "command/translatableerror",
     "i18n/resources",
+    "plugin",
     "plugin/models",
     "types",
     "util",
@@ -87,16 +89,6 @@
   packages = ["."]
   revision = "72b964305fba1230d3d818711138195f22b9ceea"
   version = "v1.0.22"
-
-[[projects]]
-  name = "github.com/cloudfoundry/cli"
-  packages = [
-    "cf/terminal",
-    "cf/trace",
-    "plugin"
-  ]
-  revision = "2af0851c1f20323abc6da2f2d5ece0dec80ccce5"
-  version = "v6.35.0"
 
 [[projects]]
   name = "github.com/deckarep/golang-set"
@@ -260,6 +252,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "edc182c01182d5533377642f12b646d2cdcefa1dcb20f32d22250a5e11906d43"
+  inputs-digest = "d3842e5fe8de076c491b30556e0419f09af9cf5e98e8e084580c847c91d15935"
   solver-name = "gps-cdcl"
   solver-version = 1

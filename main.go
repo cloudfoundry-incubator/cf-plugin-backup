@@ -11,7 +11,7 @@ import (
 	"github.com/SUSE/termui"
 	"github.com/SUSE/termui/termpassword"
 
-	"github.com/cloudfoundry/cli/plugin"
+	"code.cloudfoundry.org/cli/plugin"
 
 	"github.com/SUSE/cf-plugin-backup/cmd"
 	"github.com/SUSE/cf-plugin-backup/commands"

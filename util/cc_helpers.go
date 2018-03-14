@@ -6,10 +6,8 @@ import (
 	"log"
 	"strings"
 
-	// MIT License
-
+	"code.cloudfoundry.org/cli/plugin"
 	"github.com/SUSE/cf-plugin-backup/models"
-	"github.com/cloudfoundry/cli/plugin"
 	"github.com/deckarep/golang-set"
 )
 

@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudfoundry/cli/cf/terminal"
-	"github.com/cloudfoundry/cli/cf/trace"
-	"github.com/cloudfoundry/cli/plugin"
+	"code.cloudfoundry.org/cli/cf/terminal"
+	"code.cloudfoundry.org/cli/cf/trace"
+	"code.cloudfoundry.org/cli/plugin"
 )
 
 //GetBearerToken - returns token from cf cli
