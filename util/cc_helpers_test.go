@@ -113,7 +113,7 @@ func TestGetResources_EmptyOrgs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(*result) != 0 {
+	if len(result) != 0 {
 		t.Fatal("result is not of length 0")
 	}
 }
@@ -152,11 +152,11 @@ func TestGetResources_OneOrg(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(*result) != 1 {
+	if len(result) != 1 {
 		t.Fatal("result is not of length 1")
 	}
 
-	if (*(*result)[0]).Entity["name"] != "o1" {
+	if (*(result[0])).Entity["name"] != "o1" {
 		t.Fatal("oranization name not equal to o1")
 	}
 }
@@ -167,11 +167,11 @@ func TestGetResources_RecurseWithLoops(t *testing.T) {
 	ccResources := util.CreateOrgCCResources(&ccApi)
 	result := ccResources.GetResources(util.OrgsURL, 10)
 
-	if len(*result) != 1 {
+	if len(result) != 1 {
 		t.Fatal("result is not of length 1")
 	}
 
-	o1org := *(*result)[0]
+	o1org := *(result[0])
 
 	if o1org.Entity["name"] != "o1" {
 		t.Fatal("oranization name not equal to o1")
@@ -208,11 +208,11 @@ func TestGetResources_StacksArePulled(t *testing.T) {
 		t.Fatal("GetOrgsResourcesRecurively failed", err)
 	}
 
-	if len(*result) != 2 {
+	if len(result) != 2 {
 		t.Fatal("result is not of length 1")
 	}
 
-	o1org := *(*result)[0]
+	o1org := *(result[0])
 
 	if o1org.Entity["name"] != "o" {
 		t.Fatal("oranization name not equal to o")

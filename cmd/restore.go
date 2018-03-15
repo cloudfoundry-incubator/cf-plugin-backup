@@ -160,7 +160,7 @@ func restoreUserRole(user, space, role string) {
 
 func getUserID(user string) string {
 	resources := util.GetResources(CliConnection, "/v2/users", 1)
-	for _, u := range *resources {
+	for _, u := range resources {
 		if u.Entity["username"] != nil {
 			if u.Entity["username"].(string) == user {
 				return u.Metadata["guid"].(string)
@@ -242,7 +242,7 @@ func restoreFlag(flag models.FeatureFlagModel) string {
 func restoreQuota(quota quota) (string, error) {
 
 	resources := util.GetResources(CliConnection, "/v2/quota_definitions?q=name:"+quota.Name, 1)
-	for _, u := range *resources {
+	for _, u := range resources {
 		if u.Entity["name"].(string) == quota.Name {
 			showInfo(fmt.Sprintf("Deleting old quota %s", quota.Name))
 			err := deleteQuota(u.Metadata["guid"].(string))
@@ -278,7 +278,7 @@ func restoreSpaceQuota(spacequota spacequota) (string, error) {
 
 	resources := util.GetResources(CliConnection, "/v2/space_quota_definitions?q=name:"+spacequota.Name, 1)
 	if resources != nil {
-		for _, u := range *resources {
+		for _, u := range resources {
 			if u.Entity["name"].(string) == spacequota.Name {
 				showInfo(fmt.Sprintf("Deleting old space quota %s", spacequota.Name))
 				err := deleteSpaceQuota(u.Metadata["guid"].(string))
@@ -733,7 +733,7 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 func restoreSecurityGroup(securityGroup securityGroup) (string, error) {
 	showInfo(fmt.Sprintf("Restoring security group %s", securityGroup.Name))
 	resources := util.GetResources(CliConnection, "/v2/security_groups?q=name:"+securityGroup.Name, 1)
-	for _, u := range *resources {
+	for _, u := range resources {
 		if u.Entity["name"].(string) == securityGroup.Name {
 			showInfo(fmt.Sprintf("Deleting old security group %s", securityGroup.Name))
 			err := deleteSecurityGroup(u.Metadata["guid"].(string))
@@ -837,8 +837,8 @@ func createRoute(route route) string {
 
 func getFirstSharedDomainGUID() *models.ResourceModel {
 	resources := util.GetResources(CliConnection, "/v2/shared_domains", 1)
-	if len(*resources) > 0 {
-		return (*resources)[0]
+	if len(resources) > 0 {
+		return resources[0]
 	}
 
 	return nil
@@ -846,7 +846,7 @@ func getFirstSharedDomainGUID() *models.ResourceModel {
 
 func getSharedDomainGUID(domainName string) string {
 	resources := util.GetResources(CliConnection, "/v2/shared_domains?q=name:"+domainName, 1)
-	for _, u := range *resources {
+	for _, u := range resources {
 		if u.Entity["name"].(string) == domainName {
 			return u.Metadata["guid"].(string)
 		}
@@ -857,7 +857,7 @@ func getSharedDomainGUID(domainName string) string {
 
 func getPrivateDomainGUID(domainName string) string {
 	resources := util.GetResources(CliConnection, "/v2/private_domains?q=name:"+domainName, 1)
-	for _, u := range *resources {
+	for _, u := range resources {
 		if u.Entity["name"].(string) == domainName {
 			return u.Metadata["guid"].(string)
 		}
@@ -868,7 +868,7 @@ func getPrivateDomainGUID(domainName string) string {
 
 func getStackGUID(stackName string) string {
 	resources := util.GetResources(CliConnection, "/v2/stacks?q=name:"+stackName, 1)
-	for _, u := range *resources {
+	for _, u := range resources {
 		if u.Entity["name"].(string) == stackName {
 			return u.Metadata["guid"].(string)
 		}

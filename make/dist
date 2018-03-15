@@ -7,7 +7,7 @@ set -o errexit
 . make/include/colors.sh
 . make/include/versioning.sh
 
-printf "%b==> Disting all%b\n" "${OK_COLOR}" "${NO_COLOR}"
+printf "%b==> Distributing all%b\n" "${OK_COLOR}" "${NO_COLOR}"
 
 for OSARCH in ${OSARCHES}; do
   rm -rf build/cf-plugin-backup

@@ -4,7 +4,7 @@ set -o errexit
 
 . make/include/colors.sh
 
-printf "%b==> Formating %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
+printf "%b==> Formatting %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
 ISSUES=$(mktemp /tmp/XXXXX)
 
 trap "rm -f ${ISSUES}" EXIT
