@@ -6,11 +6,9 @@ import (
 	"log"
 	"strings"
 
-	// MIT License
-
-	"github.com/cloudfoundry/cli/plugin"
-	"github.com/deckarep/golang-set"
+	"code.cloudfoundry.org/cli/plugin"
 	"github.com/SUSE/cf-plugin-backup/models"
+	"github.com/deckarep/golang-set"
 )
 
 const urlSuffix string = "_url"
@@ -241,18 +239,12 @@ func (ccResources *CCResources) GetResource(url string, relationsDepth int) *mod
 }
 
 // GetResources gets resources
-func (ccResources *CCResources) GetResources(url string, relationsDepth int) *[]*models.ResourceModel {
+func (ccResources *CCResources) GetResources(url string, relationsDepth int) []*models.ResourceModel {
 	res := ccResources.getGenericResource(url, relationsDepth)
-	switch v := res.(type) {
-	default:
-		_ = v
-		temp := make([]*models.ResourceModel, 0)
-		res = &temp
-		return res.(*[]*models.ResourceModel)
-	case *[]*models.ResourceModel:
-		return res.(*[]*models.ResourceModel)
+	if model, ok := res.(*[]*models.ResourceModel); ok {
+		return *model
 	}
-	//return nil
+	return nil
 }
 
 func (ccResources *CCResources) recreateLinkForEntity(resource *models.ResourceModel) {
@@ -438,7 +430,7 @@ func CreateOrgCCResources(ccAPI cCApi) *CCResources {
 }
 
 // GetResources retrieves resources for a given url
-func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth int) *[]*models.ResourceModel {
+func GetResources(cliConnection plugin.CliConnection, url string, relationsDepth int) []*models.ResourceModel {
 	follow := func(childKey string) bool {
 		return false
 	}
@@ -462,7 +454,7 @@ func CreateFeatureFlagsCCResources(ccAPI cCApi) *CCResources {
 }
 
 // GetOrgsResourcesRecurively returns all orgs
-func GetOrgsResourcesRecurively(ccAPI cCApi) (*[]*models.ResourceModel, error) {
+func GetOrgsResourcesRecurively(ccAPI cCApi) ([]*models.ResourceModel, error) {
 	ccResources := CreateOrgCCResources(ccAPI)
 	resources := ccResources.GetResources(OrgsURL, 5)
 

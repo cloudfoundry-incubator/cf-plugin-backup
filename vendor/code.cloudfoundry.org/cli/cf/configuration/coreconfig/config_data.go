@@ -19,31 +19,38 @@ type AuthPrompt struct {
 }
 
 type Data struct {
-	ConfigVersion            int
-	Target                   string
-	APIVersion               string
-	AuthorizationEndpoint    string
-	LoggregatorEndPoint      string
-	DopplerEndPoint          string
-	UaaEndpoint              string
-	RoutingAPIEndpoint       string
 	AccessToken              string
-	SSHOAuthClient           string
-	RefreshToken             string
-	OrganizationFields       models.OrganizationFields
-	SpaceFields              models.SpaceFields
-	SSLDisabled              bool
+	APIVersion               string
 	AsyncTimeout             uint
-	Trace                    string
+	AuthorizationEndpoint    string
 	ColorEnabled             string
+	ConfigVersion            int
+	DopplerEndPoint          string
 	Locale                   string
-	PluginRepos              []models.PluginRepo
 	MinCLIVersion            string
 	MinRecommendedCLIVersion string
+	OrganizationFields       models.OrganizationFields
+	PluginRepos              []models.PluginRepo
+	RefreshToken             string
+	RoutingAPIEndpoint       string
+	SpaceFields              models.SpaceFields
+	SSHOAuthClient           string
+	SSLDisabled              bool
+	Target                   string
+	Trace                    string
+	UaaEndpoint              string
+	UAAGrantType             string
+	UAAOAuthClient           string
+	UAAOAuthClientSecret     string
 }
 
 func NewData() *Data {
-	return new(Data)
+	data := new(Data)
+
+	data.UAAOAuthClient = "cf"
+	data.UAAOAuthClientSecret = ""
+
+	return data
 }
 
 func (d *Data) JSONMarshalV3() ([]byte, error) {

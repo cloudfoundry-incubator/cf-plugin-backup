@@ -1,25 +1,22 @@
 #!/bin/sh
 
-OSES="linux darwin"
+OSARCHES="${OSARCHES:-linux-amd64 linux-386 darwin-amd64 windows-amd64 windows-386}"
 
 set -o errexit
 
 . make/include/colors.sh
 . make/include/versioning.sh
 
-echo "${OK_COLOR}==> Building ${ERROR_COLOR}"
+printf "%b==> Building %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
 
-for OS in ${OSES}; do \
-  env GOOS=${OS} GOARCH=amd64 go build -o build/${OS}-amd64/cf-plugin-backup \
+for OSARCH in ${OSARCHES}; do
+  export GOOS="${OSARCH%-*}"
+  export GOARCH="${OSARCH##*-}"
+  if test "${GOOS}" = windows ; then SUFFIX=".exe" ; else SUFFIX="" ; fi
+  go build -o "build/${OSARCH}/cf-plugin-backup${SUFFIX}" \
     -ldflags="-X main.version=${ARTIFACT_VERSION}" \
     ./
-  cp README.txt LICENSE.txt build/${OS}-amd64/
+  cp README.txt LICENSE.* "build/${OSARCH}/"
 done
 
-#windows is special
-env GOOS=windows GOARCH=amd64 go build -o build/windows-amd64/cf-plugin-backup.exe \
-  -ldflags="-X main.version=${ARTIFACT_VERSION}" \
-  ./
-cp README.txt LICENSE.txt build/windows-amd64/
-
-echo "${NO_COLOR}\c"
+printf "%b" "${NO_COLOR}"

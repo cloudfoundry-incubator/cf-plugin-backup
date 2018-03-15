@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cloudfoundry/cli/plugin"
+	"code.cloudfoundry.org/cli/plugin"
 )
 
 //CFPackager real implementation to download droplets.
@@ -95,10 +95,10 @@ func (packager *CFPackager) GetDroplet(guid string) ([]byte, error) {
 	}
 	req.Header.Add("Authorization", token)
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
 	if nil != err {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {

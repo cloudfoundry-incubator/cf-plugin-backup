@@ -1,0 +1,8 @@
+[[override]]
+  name = "code.cloudfoundry.org/cli"
+  source = "github.com/cloudfoundry/cli"
+  version = "v6.35.0"
+
+[[override]]
+  name = "github.com/cheggaaa/pb"
+  version = "^v1.0.5"
