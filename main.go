@@ -49,6 +49,13 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 
 	c.ui = termui.New(os.Stdin, commands.Writer, termpassword.NewReader())
 
+	if c.argLength == 1 {
+		switch args[0] {
+		case "CLI-MESSAGE-UNINSTALL":
+			return
+		}
+	}
+
 	bearer, err := commands.GetBearerToken(cliConnection)
 	if err != nil {
 		commands.ShowFailed(fmt.Sprint("ERROR:", err))
