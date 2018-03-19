@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/SUSE/cf-plugin-backup/models"
 	"github.com/SUSE/cf-plugin-backup/util"
@@ -335,10 +336,10 @@ func restoreSpace(space space) string {
 func showFlagResult(resp []string, flag models.FeatureFlagModel) string {
 	fResp := make(map[string]interface{})
 
-	err := json.Unmarshal([]byte(resp[0]), &fResp)
+	err := json.Unmarshal([]byte(strings.Join(resp, "")), &fResp)
 
 	if err != nil {
-		showWarning(fmt.Sprintf("Got unknow response while restoring flag %s: %s",
+		showWarning(fmt.Sprintf("Got unknown response while restoring flag %s: %s",
 			flag.Name, err.Error()))
 		return ""
 	}
@@ -368,7 +369,7 @@ func getResult(resp []string, checkField, expectedValue string) (string, error) 
 	if len(resp) == 0 {
 		return "", fmt.Errorf("Got null response")
 	}
-	err := json.Unmarshal([]byte(util.ConcatStringArray(resp)), &oResp)
+	err := json.Unmarshal([]byte(strings.Join(resp, "")), &oResp)
 	if err != nil {
 		return "", err
 	}

@@ -37,7 +37,7 @@ type CliConnectionCCApi struct {
 func (ccAPI *CliConnectionCCApi) InvokeGet(path string) (string, error) {
 	output, err := ccAPI.CliConnection.CliCommandWithoutTerminalOutput("curl", path, "-X", "GET")
 
-	return ConcatStringArray(output), err
+	return strings.Join(output, ""), err
 }
 
 // CCResources represents cc resources
