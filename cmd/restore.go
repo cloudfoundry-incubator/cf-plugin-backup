@@ -900,7 +900,7 @@ func updateApp(guid string, app app) {
 
 // restoreCmd represents the restore command
 var restoreCmd = &cobra.Command{
-	Use:   "restore",
+	Use:   "backup-restore",
 	Short: "Restore the CloudFoundry state from a backup",
 	Long: `Restore the CloudFoundry state from a backup created with the snapshot command
 `,
