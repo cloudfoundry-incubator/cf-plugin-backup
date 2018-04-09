@@ -84,9 +84,9 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 //GetMetadata returns metadata for cf cli
 func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 	helpMessages := map[string]string{
-		"snapshot": "cf backup snapshot",
-		"restore":  "cf backup restore [--include-security-groups] [--include-quota-definitions]",
-		"info":     "cf backup info",
+		"snapshot": "cf backup-snapshot",
+		"restore":  "cf backup-restore [--include-security-groups] [--include-quota-definitions]",
+		"info":     "cf backup-info",
 	}
 	summary := ""
 	for _, value := range helpMessages {
