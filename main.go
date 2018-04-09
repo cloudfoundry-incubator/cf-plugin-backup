@@ -56,6 +56,11 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 		}
 	}
 
+	if c.argLength == 1 {
+		c.showCommandsWithHelpText()
+		return
+	}
+
 	bearer, err := commands.GetBearerToken(cliConnection)
 	if err != nil {
 		commands.ShowFailed(fmt.Sprint("ERROR:", err))
@@ -72,11 +77,6 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 
 	if !isAdmin {
 		commands.ShowFailed("ERROR: Logged in user has no admin scope.")
-		return
-	}
-
-	if c.argLength == 1 {
-		c.showCommandsWithHelpText()
 		return
 	}
 
