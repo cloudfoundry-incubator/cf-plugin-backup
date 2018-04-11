@@ -1,5 +1,13 @@
+#!/bin/sh
+
 set -o errexit -o nounset
 
 GIT_ROOT=${GIT_ROOT:-$(git rev-parse --show-toplevel)}
 
+. make/include/colors.sh
+
+printf "%b==> Cleaning %b\n" "${OK_COLOR}" "${ERROR_COLOR}"
+
 rm -rf ${GIT_ROOT}/build
+
+printf "%b" "${NO_COLOR}"

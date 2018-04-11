@@ -23,7 +23,7 @@ It includes a summary of organizations, spaces and apps
 	Run: func(cmd *cobra.Command, args []string) {
 		backupJSON, err := ioutil.ReadFile(backupFile)
 		if os.IsNotExist(err) {
-			fmt.Fprintf(os.Stderr, "Failed to read backup information file %s.\n", backupFile)
+			fmt.Fprintf(os.Stdout, "Failed to read backup information file %s.\nYou can create one with `backup-snapshot`.\n", backupFile)
 			os.Exit(1)
 		}
 		util.FreakOut(err)

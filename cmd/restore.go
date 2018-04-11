@@ -466,11 +466,11 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 	//map["old_guid"] = "new_guid"
 	spaceGuids := make(map[string]string)
 
-	var fileContent []byte
-	_, err := os.Stat(backupFile)
-	util.FreakOut(err)
-
-	fileContent, err = ioutil.ReadFile(backupFile)
+	fileContent, err := ioutil.ReadFile(backupFile)
+	if os.IsNotExist(err) {
+		fmt.Fprintf(os.Stdout, "Failed to read backup information file %s.\nYou can create one with `backup-snapshot`.\n", backupFile)
+		os.Exit(1)
+	}
 	util.FreakOut(err)
 
 	backupObject, err := util.ReadBackupJSON(fileContent)
