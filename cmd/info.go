@@ -15,7 +15,7 @@ import (
 
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
-	Use:   "info",
+	Use:   "backup-info",
 	Short: "Show information about the current snapshot",
 	Long: `Show information about the current snapshot.
 It includes a summary of organizations, spaces and apps

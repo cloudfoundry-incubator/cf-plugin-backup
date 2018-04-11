@@ -29,3 +29,6 @@ dist:
 
 tools:
 	${GIT_ROOT}/make/tools
+
+show-versions:
+	${GIT_ROOT}/make/show-versions

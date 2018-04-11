@@ -75,23 +75,18 @@ func (c *BackupPlugin) Run(cliConnection plugin.CliConnection, args []string) {
 		return
 	}
 
-	if c.argLength == 1 {
-		c.showCommandsWithHelpText()
-		return
-	}
-
 	cmd.CliConnection = cliConnection
 
-	cmd.RootCmd.SetArgs(args[1:])
+	cmd.RootCmd.SetArgs(args)
 	cmd.Execute()
 }
 
 //GetMetadata returns metadata for cf cli
 func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 	helpMessages := map[string]string{
-		"snapshot": "cf backup snapshot",
-		"restore":  "cf backup restore [--include-security-groups] [--include-quota-definitions]",
-		"info":     "cf backup info",
+		"snapshot": "cf backup-snapshot",
+		"restore":  "cf backup-restore [--include-security-groups] [--include-quota-definitions]",
+		"info":     "cf backup-info",
 	}
 	summary := ""
 	for _, value := range helpMessages {
@@ -111,35 +106,28 @@ func (c *BackupPlugin) GetMetadata() plugin.PluginMetadata {
 			Build: int(pluginVersion.Patch),
 		},
 		MinCliVersion: plugin.VersionType{
-			Major: 1,
-			Minor: 0,
+			Major: 6,
+			Minor: 14,
 			Build: 0,
 		},
 		Commands: []plugin.Command{
-			{
-				Name:     "backup",
-				HelpText: "View command's help text",
-				UsageDetails: plugin.Usage{
-					Usage: summary,
-				},
-			},
 			plugin.Command{
-				Name:     "backup snapshot",
-				HelpText: "Create a backup",
+				Name:     "backup-snapshot",
+				HelpText: "Create a new CloudFoundry backup snapshot to a local file",
 				UsageDetails: plugin.Usage{
 					Usage: helpMessages["snapshot"],
 				},
 			},
 			plugin.Command{
-				Name:     "backup restore",
-				HelpText: "Restore a backup",
+				Name:     "backup-restore",
+				HelpText: "Restore the CloudFoundry state from a backup created with the snapshot command",
 				UsageDetails: plugin.Usage{
 					Usage: helpMessages["restore"],
 				},
 			},
 			plugin.Command{
-				Name:     "backup info",
-				HelpText: "Show backup summary",
+				Name:     "backup-info",
+				HelpText: "Show information about the current snapshot",
 				UsageDetails: plugin.Usage{
 					Usage: helpMessages["info"],
 				},

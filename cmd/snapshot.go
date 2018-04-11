@@ -16,7 +16,7 @@ import (
 
 // snapshotCmd represents the snapshot command
 var snapshotCmd = &cobra.Command{
-	Use:   "snapshot",
+	Use:   "backup-snapshot",
 	Short: "Create a new CloudFoundry backup snapshot",
 	Long: `Create a new CloudFoundry backup snapshot to a local file.
 `,
