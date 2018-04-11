@@ -14,5 +14,4 @@ SHA                = ${GIT_SHA}
 Describe           = ${GIT_DESCRIBE}
 Artifact Name      = ${ARTIFACT_NAME}
 App Version        = ${APP_VERSION}
-Docker App Version = ${DOCKER_APP_VERSION}
 EOF
