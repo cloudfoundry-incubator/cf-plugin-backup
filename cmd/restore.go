@@ -66,22 +66,22 @@ type flag struct {
 }
 
 type app struct {
-	Name               string      `json:"name"`
-	SpaceGUID          string      `json:"space_guid"`
-	Diego              interface{} `json:"diego"`
-	Ports              interface{} `json:"ports"`
-	Memory             interface{} `json:"memory"`
-	Instances          interface{} `json:"instances"`
-	DiskQuota          interface{} `json:"disk_quota"`
-	StackGUID          string      `json:"stack_guid"`
-	Command            interface{} `json:"command"`
-	Buildpack          interface{} `json:"buildpack"`
-	HealthCheckType    interface{} `json:"health_check_type"`
-	HealthCheckTimeout interface{} `json:"health_check_timeout"`
-	EnableSSH          interface{} `json:"enable_ssh"`
-	DockerImage        interface{} `json:"docker_image"`
-	EnvironmentJSON    interface{} `json:"environment_json"`
-	State              interface{} `json:"state"`
+	Name               string        `json:"name"`
+	SpaceGUID          string        `json:"space_guid"`
+	Diego              interface{}   `json:"diego"`
+	Ports              []interface{} `json:"ports"`
+	Memory             interface{}   `json:"memory"`
+	Instances          interface{}   `json:"instances"`
+	DiskQuota          interface{}   `json:"disk_quota"`
+	StackGUID          string        `json:"stack_guid,omitempty"`
+	Command            interface{}   `json:"command"`
+	Buildpack          interface{}   `json:"buildpack,omitempty"`
+	HealthCheckType    interface{}   `json:"health_check_type"`
+	HealthCheckTimeout interface{}   `json:"health_check_timeout"`
+	EnableSSH          interface{}   `json:"enable_ssh"`
+	DockerImage        interface{}   `json:"docker_image,omitempty"`
+	EnvironmentJSON    interface{}   `json:"environment_json"`
+	State              interface{}   `json:"state"`
 }
 
 type route struct {
@@ -127,7 +127,7 @@ func restorePrivateDomain(domain privateDomain) (string, error) {
 		showWarning(fmt.Sprintf("Could not create private domain %s, exception message: %s",
 			domain.Name, err.Error()))
 	}
-	result, err := getResult(resp, "name", domain.Name)
+	result, _, err := getResult(resp, "name", domain.Name)
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring private domain %s: %s", domain.Name, err.Error()))
 	} else {
@@ -150,7 +150,7 @@ func restoreUserRole(user, space, role string) {
 			showWarning(fmt.Sprintf("Could not create user association %s, exception message: %s",
 				user, err.Error()))
 		}
-		_, err = getResult(resp, "", "")
+		_, _, err = getResult(resp, "", "")
 		if err != nil {
 			showWarning(fmt.Sprintf("Error restoring user role %s for user %s: %s", role, user, err.Error()))
 		} else {
@@ -184,7 +184,21 @@ func restoreOrg(org org) string {
 		showWarning(fmt.Sprintf("Could not create organization %s, exception message: %s",
 			org.Name, err.Error()))
 	}
-	result, err := getResult(resp, "name", org.Name)
+	result, obj, err := getResult(resp, "name", org.Name)
+	if err != nil && obj != nil && obj["error_code"] == "CF-OrganizationNameTaken" {
+		// The org already exists... maybe we don't need to restore
+		guid := getGUIDByQuery("organizations", "name:"+org.Name)
+		if guid != "" {
+			resp, err = CliConnection.CliCommandWithoutTerminalOutput("curl",
+				"/v2/organizations/"+guid, "-H", "Content-Type: application/json",
+				"-d", string(oJSON), "-X", "PUT")
+			if err != nil {
+				showWarning(fmt.Sprintf("Could not update organization %s, exception message: %s",
+					org.Name, err.Error()))
+			}
+			result, _, err = getResult(resp, "name", org.Name)
+		}
+	}
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring organization %s: %s", org.Name, err.Error()))
 	} else {
@@ -204,7 +218,7 @@ func restoreApp(app app) string {
 		showWarning(fmt.Sprintf("Could not create application %s, exception message: %s",
 			app.Name, err.Error()))
 	}
-	result, err := getResult(resp, "name", app.Name)
+	result, _, err := getResult(resp, "name", app.Name)
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring application %s: %s", app.Name, err.Error()))
 	} else {
@@ -265,7 +279,7 @@ func restoreQuota(quota quota) (string, error) {
 			quota.Name, err.Error()))
 	}
 
-	result, err := getResult(resp, "name", quota.Name)
+	result, _, err := getResult(resp, "name", quota.Name)
 
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring quota %s: %s", quota.Name, err.Error()))
@@ -302,7 +316,7 @@ func restoreSpaceQuota(spacequota spacequota) (string, error) {
 			spacequota.Name, err.Error()))
 	}
 
-	result, err := getResult(resp, "name", spacequota.Name)
+	result, _, err := getResult(resp, "name", spacequota.Name)
 
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring quota %s: %s", spacequota.Name, err.Error()))
@@ -312,7 +326,7 @@ func restoreSpaceQuota(spacequota spacequota) (string, error) {
 	return result, nil
 }
 
-func restoreSpace(space space) string {
+func restoreSpace(space space, orgGUID string) string {
 	showInfo(fmt.Sprintf("Restoring space: %s", space.Name))
 	oJSON, err := json.Marshal(space)
 	util.FreakOut(err)
@@ -324,7 +338,21 @@ func restoreSpace(space space) string {
 		showWarning(fmt.Sprintf("Could not create space %s, exception message: %s",
 			space.Name, err.Error()))
 	}
-	result, err := getResult(resp, "name", space.Name)
+	result, obj, err := getResult(resp, "name", space.Name)
+	if err != nil && obj != nil && obj["error_code"] == "CF-SpaceNameTaken" {
+		// The space already exists; try to patch the existing one
+		guid := getGUIDByQuery("spaces", "name:"+space.Name, "organization_guid:"+orgGUID)
+		if guid != "" {
+			resp, err = CliConnection.CliCommandWithoutTerminalOutput("curl",
+				"/v2/spaces/"+guid, "-H", "Content-Type: application/json",
+				"-d", string(oJSON), "-X", "PUT")
+			if err != nil {
+				showWarning(fmt.Sprintf("Could not update space %s, exception message: %s",
+					space.Name, err.Error()))
+			}
+			result, _, err = getResult(resp, "name", space.Name)
+		}
+	}
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring space %s: %s", space.Name, err.Error()))
 	} else {
@@ -364,17 +392,52 @@ func showFlagResult(resp []string, flag models.FeatureFlagModel) string {
 	return ""
 }
 
-func getResult(resp []string, checkField, expectedValue string) (string, error) {
+// getGUIDByName returns the GUID of the item of the specified type with the
+// given query; if not found, an empty string is returned.
+func getGUIDByQuery(itemType string, params ...string) string {
+	query := fmt.Sprintf("/v2/%s?q=%s", itemType, strings.Join(params, ";"))
+	resp, err := CliConnection.CliCommandWithoutTerminalOutput("curl",
+		query, "-H", "Content-Type: application/json", "-X", "GET")
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not fetch %s %s, exception message: %s",
+			itemType, params[0], err.Error()))
+		return ""
+	}
+	var resources models.ResourceCollectionModel
+	err = json.Unmarshal([]byte(strings.Join(resp, "")), &resources)
+	if err != nil {
+		showWarning(fmt.Sprintf("Could not fetch %s %s, exception message: %s",
+			itemType, params[0], err.Error()))
+		return ""
+	}
+
+	if resources.Resources == nil || len(*resources.Resources) < 1 {
+		// No item found
+		return ""
+	}
+	for _, resource := range *resources.Resources {
+		guid, ok := resource.Metadata["guid"].(string)
+		if ok {
+			return guid
+		}
+	}
+
+	return ""
+}
+
+// getResult parses the response, and returns the guid if successful; otherwise,
+// it returns the parsed response object and an error.
+func getResult(resp []string, checkField, expectedValue string) (string, map[string]interface{}, error) {
 	oResp := make(map[string]interface{})
 	if len(resp) == 0 {
-		return "", fmt.Errorf("Got null response")
+		return "", nil, fmt.Errorf("Got null response")
 	}
 	err := json.Unmarshal([]byte(strings.Join(resp, "")), &oResp)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if oResp["error_code"] != nil {
-		return "", fmt.Errorf("Got %v-%v", oResp["error_code"], oResp["description"])
+		return "", oResp, fmt.Errorf("Got %v-%v", oResp["error_code"], oResp["description"])
 	}
 
 	if checkField != "" {
@@ -382,17 +445,17 @@ func getResult(resp []string, checkField, expectedValue string) (string, error) 
 			inName := (oResp["entity"].(map[string]interface{}))[checkField].(string)
 			if inName == expectedValue {
 				if oResp["metadata"] != nil {
-					return (oResp["metadata"].(map[string]interface{}))["guid"].(string), nil
+					return (oResp["metadata"].(map[string]interface{}))["guid"].(string), oResp, nil
 				}
 			} else {
-				return "", fmt.Errorf("Field %s does not match requested value %s", oResp[checkField], expectedValue)
+				return "", oResp, fmt.Errorf("Field %s does not match requested value %s", oResp[checkField], expectedValue)
 			}
 		} else {
-			return "", fmt.Errorf("Warning unknown answer received")
+			return "", oResp, fmt.Errorf("Warning unknown answer received")
 		}
 	}
 
-	return "", nil
+	return "", oResp, nil
 }
 
 func restoreSharedDomain(sharedDomain sharedDomain) (string, error) {
@@ -407,7 +470,7 @@ func restoreSharedDomain(sharedDomain sharedDomain) (string, error) {
 		showWarning(fmt.Sprintf("Could not create shared domain %s, exception message: %s",
 			sharedDomain.Name, err.Error()))
 	}
-	result, err := getResult(resp, "name", sharedDomain.Name)
+	result, _, err := getResult(resp, "name", sharedDomain.Name)
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring shared domain %s: %s", sharedDomain.Name, err.Error()))
 	} else {
@@ -551,7 +614,7 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 						if includeQuotaDefinitions && sp.Entity["space_quota_definition_guid"] != nil {
 							s.SpaceQuotaGUID = spaceQuotaGuids[sp.Entity["space_quota_definition_guid"].(string)]
 						}
-						spaceGUID := restoreSpace(s)
+						spaceGUID := restoreSpace(s, orgGUID)
 						spaceGuids[sp.Metadata["guid"].(string)] = spaceGUID
 
 						if spaceGUID != "" {
@@ -596,7 +659,10 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 						for _, application := range *apps {
 							stackName := application.Entity["stack"].(*models.ResourceModel).Entity["name"].(string)
 							stackGUID := getStackGUID(stackName)
-							if stackGUID == "" {
+							if application.Entity["docker_image"] != nil {
+								// When docker image, we have to pretend the app has no stack
+								stackGUID = ""
+							} else if stackGUID == "" {
 								showWarning(fmt.Sprintf("Stack %s not found. Skipping app %s", stackName, application.Entity["name"].(string)))
 								continue
 							}
@@ -616,7 +682,9 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 								EnableSSH:          application.Entity["enable_ssh"],
 								DockerImage:        application.Entity["docker_image"],
 								EnvironmentJSON:    application.Entity["environment_json"],
-								Ports:              application.Entity["ports"],
+							}
+							if ports, ok := application.Entity["ports"].([]interface{}); ok && len(ports) > 0 {
+								a.Ports = ports
 							}
 
 							showInfo(fmt.Sprintf("Restoring App %s for space %s [%d/%d]", a.Name, sp.Entity["name"].(string), appIndex, appsCount))
@@ -792,7 +860,7 @@ func createSecurityGroup(securityGroup securityGroup) (string, error) {
 		showWarning(fmt.Sprintf("Could not create security group %s, exception message: %s",
 			securityGroup.Name, err.Error()))
 	}
-	result, err := getResult(resp, "name", securityGroup.Name)
+	result, _, err := getResult(resp, "name", securityGroup.Name)
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring security group %s: %s", securityGroup.Name, err.Error()))
 	} else {
@@ -808,7 +876,7 @@ func bindRoute(appGUID, routeGUID string) error {
 	if err != nil {
 		return err
 	}
-	_, err = getResult(resp, "", "")
+	_, _, err = getResult(resp, "", "")
 	if err != nil {
 		return err
 	}
@@ -827,7 +895,21 @@ func createRoute(route route) string {
 		showWarning(fmt.Sprintf("Could not create route %s, exception message: %s",
 			route.Host, err.Error()))
 	}
-	result, err := getResult(resp, "host", route.Host.(string))
+	result, obj, err := getResult(resp, "host", route.Host.(string))
+	if err != nil && obj != nil && obj["error_code"] == "CF-RouteHostTaken" {
+		// The route already exists; try to patch the existing one
+		guid := getGUIDByQuery("routes", "host:"+route.Host.(string))
+		if guid != "" {
+			resp, err = CliConnection.CliCommandWithoutTerminalOutput("curl",
+				"/v2/routes/"+guid, "-H", "Content-Type: application/json",
+				"-d", string(oJSON), "-X", "PUT")
+			if err != nil {
+				showWarning(fmt.Sprintf("Could not update route %s, exception message: %s",
+					route.Host, err.Error()))
+			}
+			result, _, err = getResult(resp, "host", route.Host.(string))
+		}
+	}
 	if err != nil {
 		showWarning(fmt.Sprintf("Error creating route %s: %s", route.Host, err.Error()))
 	} else {
@@ -890,7 +972,7 @@ func updateApp(guid string, app app) {
 		showWarning(fmt.Sprintf("Could not update app %s, exception message: %s",
 			app.Name, err.Error()))
 	}
-	_, err = getResult(resp, "name", app.Name)
+	_, _, err = getResult(resp, "name", app.Name)
 	if err != nil {
 		showWarning(fmt.Sprintf("Error updating application %s: %s", app.Name, err.Error()))
 	} else {
