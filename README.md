@@ -59,23 +59,28 @@ To show you what information exists about the current backup, use this command:
 `cf backup-info`
 
 ## Scope of the restore
-orgs​*	Yes
-Org auditors​	Yes
-Org manager​	Yes
-Org billing-manager​	Yes
-Quota definitions​	Yes
-spaces​*	Yes
-Space developers​	Yes
-Space auditors​	Yes
-Space managers​	Yes
-apps​	Yes
-App binaries​	Yes
-routes​	Yes
-Route mappings​	Yes
-domains​	Yes
-Private domains​	Yes
-stacks​	N/A
-Feature flags​	Yes
-security groups​	Optional
+
+
+Scope | Restore
+---|---
+orgs\* | Yes
+Org auditors | Yes
+Org manager | Yes
+Org billing-manager | Yes
+Quota definitions | Yes
+spaces* | Yes
+Space developers | Yes
+Space auditors | Yes
+Space managers | Yes
+apps | Yes
+App binaries | Yes
+routes | Yes
+Route mappings | Yes
+domains | Yes
+Private domains | Yes
+stacks | N/A
+Feature flags | Yes
+security groups | Optional
+
 
 *Organization and space users are backed up at the Cloud Application Platform level. The user account in UAA/LDAP is not backed up.
