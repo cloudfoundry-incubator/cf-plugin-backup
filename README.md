@@ -47,8 +47,6 @@ This will save your cloud foundry information into a file in your current direct
 To restore all of the Cloud Application Platform data, including applications, navigate to the directory which contains your `cf-backup.json` and `app-bits/` and run this command:   
 `cf backup-restore`  
 
-NOTE: The backup-restore plugin will not restore any data into existing organizations. This means that if you want to restore data and applications into an organization called `my_org`, you should ensure there is no existing organization with that name.  
-
 There are 2 optional parameters that can be used when restoring:
 
 * `[--include-security-groups]`   
