@@ -63,24 +63,24 @@ To show you what information exists about the current backup, use this command:
 
 Scope | Restore
 ---|---
-orgs\* | Yes
+Orgs\* | Yes
 Org auditors | Yes
 Org manager | Yes
 Org billing-manager | Yes
 Quota definitions | Yes
-spaces* | Yes
+Spaces* | Yes
 Space developers | Yes
 Space auditors | Yes
 Space managers | Yes
-apps | Yes
+Apps | Yes
 App binaries | Yes
-routes | Yes
+Routes | Yes
 Route mappings | Yes
-domains | Yes
+Domains | Yes
 Private domains | Yes
-stacks | N/A
+Stacks | N/A
 Feature flags | Yes
-security groups | Optional
-
+Security groups | Optional
+Custom buildpacks | No
 
 *Organization and space users are backed up at the Cloud Application Platform level. The user account in UAA/LDAP, as well as service instances and their application bindings are not backed up.
