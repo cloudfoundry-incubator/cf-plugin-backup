@@ -779,10 +779,13 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 		ccResources := util.CreateSecurityGroupsCCResources(nil)
 		securityGroups := ccResources.TransformToResourceModels(backupObject.SecurityGroups)
 		for _, sg := range *securityGroups {
-			spaces := *sg.Entity["spaces"].(*[]*models.ResourceModel)
-			newSpaces := make([]string, len(spaces))
-			for i, s := range spaces {
-				newSpaces[i] = spaceGuids[(s.Metadata["guid"]).(string)]
+			spaces, ok := sg.Entity["spaces"].(*[]*models.ResourceModel)
+			var newSpaces []string
+			if ok {
+				newSpaces = make([]string, len(*spaces))
+				for i, s := range *spaces {
+					newSpaces[i] = spaceGuids[(s.Metadata["guid"]).(string)]
+				}
 			}
 
 			g := securityGroup{
