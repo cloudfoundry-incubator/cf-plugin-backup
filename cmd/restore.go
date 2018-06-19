@@ -131,7 +131,7 @@ func restorePrivateDomain(domain privateDomain) (string, error) {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring private domain %s: %s", domain.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored private domain %s", domain.Name))
+		showInfo(fmt.Sprintf("Successfully restored private domain %s", domain.Name))
 	}
 	return result, nil
 }
@@ -154,7 +154,7 @@ func restoreUserRole(user, space, role string) {
 		if err != nil {
 			showWarning(fmt.Sprintf("Error restoring user role %s for user %s: %s", role, user, err.Error()))
 		} else {
-			showInfo(fmt.Sprintf("Succesfully restored user role %s for user %s", role, user))
+			showInfo(fmt.Sprintf("Successfully restored user role %s for user %s", role, user))
 		}
 	}
 }
@@ -202,7 +202,7 @@ func restoreOrg(org org) string {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring organization %s: %s", org.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored organization %s", org.Name))
+		showInfo(fmt.Sprintf("Successfully restored organization %s", org.Name))
 	}
 	return result
 }
@@ -222,7 +222,7 @@ func restoreApp(app app) string {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring application %s: %s", app.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored application %s", app.Name))
+		showInfo(fmt.Sprintf("Successfully restored application %s", app.Name))
 	}
 	return result
 }
@@ -284,7 +284,7 @@ func restoreQuota(quota quota) (string, error) {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring quota %s: %s", quota.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored quota %s", quota.Name))
+		showInfo(fmt.Sprintf("Successfully restored quota %s", quota.Name))
 	}
 	return result, nil
 }
@@ -321,7 +321,7 @@ func restoreSpaceQuota(spacequota spacequota) (string, error) {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring quota %s: %s", spacequota.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored quota %s", spacequota.Name))
+		showInfo(fmt.Sprintf("Successfully restored quota %s", spacequota.Name))
 	}
 	return result, nil
 }
@@ -356,7 +356,7 @@ func restoreSpace(space space, orgGUID string) string {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring space %s: %s", space.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored space %s", space.Name))
+		showInfo(fmt.Sprintf("Successfully restored space %s", space.Name))
 	}
 	return result
 }
@@ -381,7 +381,7 @@ func showFlagResult(resp []string, flag models.FeatureFlagModel) string {
 	if fResp["name"] != nil {
 		inName := fResp["name"].(string)
 		if inName == flag.Name {
-			showInfo(fmt.Sprintf("Succesfully restored flag %s", flag.Name))
+			showInfo(fmt.Sprintf("Successfully restored flag %s", flag.Name))
 		} else {
 			showWarning(fmt.Sprintf("Name %s does not match requested name %s",
 				fResp["name"], flag.Name))
@@ -474,7 +474,7 @@ func restoreSharedDomain(sharedDomain sharedDomain) (string, error) {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring shared domain %s: %s", sharedDomain.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored shared domain %s", sharedDomain.Name))
+		showInfo(fmt.Sprintf("Successfully restored shared domain %s", sharedDomain.Name))
 	}
 	return result, nil
 }
@@ -864,7 +864,7 @@ func createSecurityGroup(securityGroup securityGroup) (string, error) {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error restoring security group %s: %s", securityGroup.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully restored security group %s", securityGroup.Name))
+		showInfo(fmt.Sprintf("Successfully restored security group %s", securityGroup.Name))
 	}
 	return result, nil
 }
@@ -913,7 +913,7 @@ func createRoute(route route) string {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error creating route %s: %s", route.Host, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully created route %s", route.Host))
+		showInfo(fmt.Sprintf("Successfully created route %s", route.Host))
 	}
 	return result
 }
@@ -976,7 +976,7 @@ func updateApp(guid string, app app) {
 	if err != nil {
 		showWarning(fmt.Sprintf("Error updating application %s: %s", app.Name, err.Error()))
 	} else {
-		showInfo(fmt.Sprintf("Succesfully updated application %s", app.Name))
+		showInfo(fmt.Sprintf("Successfully updated application %s", app.Name))
 	}
 }
 
