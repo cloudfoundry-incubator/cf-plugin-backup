@@ -21,26 +21,26 @@ A Cloud Foundry Plugin that allows backup and restore of the CCDB using CF API.
      that the application should be restarted for the new
      configuration to take effect.
 
-  - User information is managed by the UAA, not the Cloud Controller
-    (CC). As the plugin talks only to the CC it cannot save full user
-    information, nor restore users.
+   - User information is managed by the UAA, not the Cloud Controller
+     (CC). As the plugin talks only to the CC it cannot save full user
+     information, nor restore users.
 
-    Saving and restoring users has to be done separately, and
-    restoration has to happen before the backup plugin is invoked.
+     Saving and restoring users has to be done separately, and
+     restoration has to happen before the backup plugin is invoked.
 
-  - The set of available stacks is part of the CF instance setup, not
-    of the CC configuration. Attempting to restore applications using
-    stacks not available on the target CF instance will fail.
+   - The set of available stacks is part of the CF instance setup, not
+     of the CC configuration. Attempting to restore applications using
+     stacks not available on the target CF instance will fail.
 
-    Setting the necessary stacks has to be done separately and before
-    the backup plugin is invoked.
+     Setting the necessary stacks has to be done separately and before
+     the backup plugin is invoked.
 
-  - Buildpacks are not saved, neither standard, nor custom. Attempting
-    to restore applications using buildpacks not available on the
-    target CF instance will fail.
+   - Buildpacks are not saved, neither standard, nor
+     custom. Attempting to restore applications using buildpacks not
+     available on the target CF instance will fail.
 
-    Saving and restoring buildpacks has to be done separately, and
-    restoration has to happen before the backup plugin is invoked.
+     Saving and restoring buildpacks has to be done separately, and
+     restoration has to happen before the backup plugin is invoked.
 
 ## Install the Backup/restore plugin
 
