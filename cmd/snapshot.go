@@ -11,7 +11,7 @@ import (
 
 	"github.com/SUSE/cf-plugin-backup/models"
 	"github.com/SUSE/cf-plugin-backup/util"
-	"github.com/SUSE/termui/termprogressbar"
+	termuiprogressbar "github.com/SUSE/termui/termprogressbar"
 )
 
 // snapshotCmd represents the snapshot command
