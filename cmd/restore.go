@@ -93,9 +93,11 @@ type route struct {
 }
 
 type securityGroup struct {
-	Name       string      `json:"name"`
-	Rules      interface{} `json:"rules"`
-	SpaceGuids []string    `json:"space_guids"`
+	Name           string      `json:"name"`
+	Rules          interface{} `json:"rules"`
+	SpaceGuids     []string    `json:"space_guids"`
+	RunningDefault bool        `json:"running_default"`
+	StagingDefault bool        `json:"staging_default"`
 }
 
 type sharedDomain struct {
@@ -789,9 +791,11 @@ func restoreFromJSON(includeSecurityGroups bool, includeQuotaDefinitions bool) {
 			}
 
 			g := securityGroup{
-				Name:       sg.Entity["name"].(string),
-				Rules:      sg.Entity["rules"],
-				SpaceGuids: newSpaces,
+				Name:           sg.Entity["name"].(string),
+				Rules:          sg.Entity["rules"],
+				SpaceGuids:     newSpaces,
+				RunningDefault: sg.Entity["running_default"].(bool),
+				StagingDefault: sg.Entity["staging_default"].(bool),
 			}
 
 			_, err = restoreSecurityGroup(g)
@@ -869,6 +873,29 @@ func createSecurityGroup(securityGroup securityGroup) (string, error) {
 	} else {
 		showInfo(fmt.Sprintf("Successfully restored security group %s", securityGroup.Name))
 	}
+
+	if securityGroup.RunningDefault {
+		showInfo(fmt.Sprintf("Restoring running default security group %s", securityGroup.Name))
+		resp, err = CliConnection.CliCommandWithoutTerminalOutput("curl",
+			fmt.Sprintf("/v2/config/running_security_groups/%s", result),
+			"-d", "", "-X", "PUT")
+		if err != nil {
+			showWarning(fmt.Sprintf("Could not restore running security group %s, exception message: %s",
+				securityGroup.Name, err))
+		}
+	}
+
+	if securityGroup.StagingDefault {
+		showInfo(fmt.Sprintf("Restoring staging default security group %s", securityGroup.Name))
+		resp, err = CliConnection.CliCommandWithoutTerminalOutput("curl",
+			fmt.Sprintf("/v2/config/staging_security_groups/%s", result),
+			"-d", "", "-X", "PUT")
+		if err != nil {
+			showWarning(fmt.Sprintf("Could not restore staging security group %s, exception message: %s",
+				securityGroup.Name, err))
+		}
+	}
+
 	return result, nil
 }
 
