@@ -305,7 +305,12 @@ func (ccResources *CCResources) transformToResourceModel(resource interface{}) *
 
 	resourceValue := resource.(map[string]interface{})
 
-	resourceModel.Metadata = resourceValue["metadata"].(map[string]interface{})
+	metadata, hasMetadata := resourceValue["metadata"].(map[string]interface{})
+	if hasMetadata {
+		resourceModel.Metadata = metadata
+	} else {
+		return &resourceModel
+	}
 	entity, hasEntity := resourceValue["entity"].(map[string]interface{})
 
 	// Cache handling
